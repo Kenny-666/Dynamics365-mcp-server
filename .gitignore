@@ -1,0 +1,13 @@
+node_modules/
+.cache/
+.serena/
+dist/
+.env
+*.log
+.DS_Store
+coverage/
+.vscode/
+*.tsbuildinfo
+/dynamics365-mcp-server-*.tgz
+distribution/staging/
+tools/assembly-inspector/obj/

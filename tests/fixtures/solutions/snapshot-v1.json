@@ -1,0 +1,256 @@
+{
+  "format": "d365.solution.snapshot.v1",
+  "capturedAt": "2026-10-28T00:00:00.000Z",
+  "environment": {
+    "orgUrl": "https://crm.invalid/Demo",
+    "apiVersion": "v9.1",
+    "authType": "ad"
+  },
+  "identity": {
+    "organizationId": "000003e5-2222-4333-8444-555555555555",
+    "userId": "000003e6-2222-4333-8444-555555555555",
+    "businessUnitId": "66666666-2222-4333-8444-555555555555"
+  },
+  "solution": {
+    "solutionid": "000003e7-2222-4333-8444-555555555555",
+    "uniquename": "TransferDemo",
+    "version": "1.2.3.4",
+    "ismanaged": false
+  },
+  "coverage": {
+    "inventoryComplete": true,
+    "membershipStable": true,
+    "solutionStable": true,
+    "definitionReadsComplete": true,
+    "atomic": false,
+    "nestedComponentsExpanded": false,
+    "publication": "native_reads_publication_not_verified",
+    "limit": 100,
+    "maxPages": 5,
+    "observedCount": 5
+  },
+  "components": [
+    {
+      "membershipId": "00000065-2222-4333-8444-555555555555",
+      "objectId": "00000001-2222-4333-8444-555555555555",
+      "componentType": 1,
+      "rootBehavior": 1,
+      "rootMembershipId": null,
+      "status": "available",
+      "key": "1:demo_table",
+      "definition": {
+        "LogicalName": "demo_table",
+        "SchemaName": "demo_Table",
+        "EntitySetName": "demo_tables",
+        "PrimaryIdAttribute": "demo_tableid",
+        "PrimaryNameAttribute": "demo_name",
+        "OwnershipType": "UserOwned",
+        "IsActivity": false,
+        "IsAuditEnabled": true,
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "LanguageCode": 1033,
+              "Label": "Table"
+            },
+            {
+              "LanguageCode": 2052,
+              "Label": "Table 中文"
+            }
+          ]
+        },
+        "DisplayCollectionName": {
+          "LocalizedLabels": [
+            {
+              "LanguageCode": 1033,
+              "Label": "Tables"
+            },
+            {
+              "LanguageCode": 2052,
+              "Label": "Tables 中文"
+            }
+          ]
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "LanguageCode": 1033,
+              "Label": "Description"
+            },
+            {
+              "LanguageCode": 2052,
+              "Label": "Description 中文"
+            }
+          ]
+        }
+      },
+      "definitionHash": "0461fe26418f78b3ff7d72865c76867df2933d806d50ba2c712f66215c315784",
+      "issue": null
+    },
+    {
+      "membershipId": "0000006d-2222-4333-8444-555555555555",
+      "objectId": "00000009-2222-4333-8444-555555555555",
+      "componentType": 9,
+      "rootBehavior": 1,
+      "rootMembershipId": null,
+      "status": "available",
+      "key": "9:demo_choices",
+      "definition": {
+        "Name": "demo_choices",
+        "IsGlobal": true,
+        "OptionSetType": "Picklist",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "LanguageCode": 1033,
+              "Label": "Choice"
+            },
+            {
+              "LanguageCode": 2052,
+              "Label": "Choice 中文"
+            }
+          ]
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "LanguageCode": 1033,
+              "Label": "Description"
+            },
+            {
+              "LanguageCode": 2052,
+              "Label": "Description 中文"
+            }
+          ]
+        },
+        "Options": [
+          {
+            "Value": 1,
+            "Label": {
+              "LocalizedLabels": [
+                {
+                  "LanguageCode": 1033,
+                  "Label": "One"
+                },
+                {
+                  "LanguageCode": 2052,
+                  "Label": "One 中文"
+                }
+              ]
+            },
+            "Description": {
+              "LocalizedLabels": [
+                {
+                  "LanguageCode": 1033,
+                  "Label": "First"
+                },
+                {
+                  "LanguageCode": 2052,
+                  "Label": "First 中文"
+                }
+              ]
+            },
+            "Color": null
+          },
+          {
+            "Value": 2,
+            "Label": {
+              "LocalizedLabels": [
+                {
+                  "LanguageCode": 1033,
+                  "Label": "Two"
+                },
+                {
+                  "LanguageCode": 2052,
+                  "Label": "Two 中文"
+                }
+              ]
+            },
+            "Description": {
+              "LocalizedLabels": [
+                {
+                  "LanguageCode": 1033,
+                  "Label": "Second"
+                },
+                {
+                  "LanguageCode": 2052,
+                  "Label": "Second 中文"
+                }
+              ]
+            },
+            "Color": "#FFFFFF"
+          }
+        ]
+      },
+      "definitionHash": "5a88e001fef97ac178f7d5d782f87e7e032b282977f4a913aef39126a820e998",
+      "issue": null
+    },
+    {
+      "membershipId": "0000006e-2222-4333-8444-555555555555",
+      "objectId": "0000000a-2222-4333-8444-555555555555",
+      "componentType": 10,
+      "rootBehavior": 1,
+      "rootMembershipId": null,
+      "status": "available",
+      "key": "10:demo_table_parent",
+      "definition": {
+        "SchemaName": "demo_table_parent",
+        "RelationshipType": "OneToManyRelationship",
+        "ReferencedEntity": "demo_parent",
+        "ReferencedAttribute": "demo_parentid",
+        "ReferencingEntity": "demo_table",
+        "ReferencingAttribute": "demo_parentid",
+        "CascadeConfiguration": {
+          "Assign": "NoCascade",
+          "Delete": "Restrict",
+          "Merge": "NoCascade",
+          "Reparent": "NoCascade",
+          "Share": "NoCascade",
+          "Unshare": "NoCascade"
+        }
+      },
+      "definitionHash": "632d1468fe243bb177f1cc6e91c70fbd79f8527ac51a1b66d90ad0e1ab6fce47",
+      "issue": null
+    },
+    {
+      "membershipId": "000000a1-2222-4333-8444-555555555555",
+      "objectId": "0000003d-2222-4333-8444-555555555555",
+      "componentType": 61,
+      "rootBehavior": 1,
+      "rootMembershipId": null,
+      "status": "available",
+      "key": "61:demo_/main.js",
+      "definition": {
+        "name": "demo_/main.js",
+        "displayname": "Script",
+        "webresourcetype": 3,
+        "contentSha256": "0be72baf33c83523f4c3d11471147d4d5768c6684a863f57397a9f5b1a0172a6",
+        "contentBytes": 23
+      },
+      "definitionHash": "5a2e7402232df74cf135a7c6cc2b9b32c7a9da0e54025e960c1576b8464b22f2",
+      "issue": null
+    },
+    {
+      "membershipId": "000000bf-2222-4333-8444-555555555555",
+      "objectId": "0000005b-2222-4333-8444-555555555555",
+      "componentType": 91,
+      "rootBehavior": 1,
+      "rootMembershipId": null,
+      "status": "available",
+      "key": "91:[\"Demo.Plugin\",\"neutral\",\"abcdef0123456789\"]",
+      "definition": {
+        "name": "Demo.Plugin",
+        "version": "1.2.3.4",
+        "culture": "neutral",
+        "publickeytoken": "abcdef0123456789",
+        "sourcetype": 0,
+        "isolationmode": 2,
+        "contentSha256": "78924c8ca7f00acfe8901866d578a842df2a81aa6f7a6e07415609af6be9a6ec",
+        "contentBytes": 23
+      },
+      "definitionHash": "10f5f2279ec4867cb73ee72620530e70bd1f44c7056df97c2399aeb6568c1244",
+      "issue": null
+    }
+  ],
+  "snapshotHash": "333390bfdfd1218dad7b358440a49071652881f8e7566eb38510e86160a7129f"
+}
