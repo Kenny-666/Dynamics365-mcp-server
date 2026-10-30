@@ -2,7 +2,7 @@
 
 Includes the built MCP server, Node.js and .NET 10 Runtime. Extract and configure it without installing Node.js, npm, the .NET SDK or project dependencies. This package targets Windows x64. Other operating systems can use the accompanying npm archive with their own runtimes.
 
-[中文](README.md) · [Full documentation](app/README.en.md) · [84-tool coverage](app/docs/CRM_TOOL_COVERAGE.md)
+[中文](README.md) · [Full documentation](app/README.md) · [84-tool coverage](app/docs/CRM_TOOL_COVERAGE.md)
 
 ## Connect
 

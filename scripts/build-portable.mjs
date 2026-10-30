@@ -33,7 +33,7 @@ copyTree(path.join(project,'distribution','windows'),folder);
 for(const file of fs.readdirSync(folder))if(file.endsWith('.cmd')){
   const target=path.join(folder,file);fs.writeFileSync(target,fs.readFileSync(target,'utf8').replace(/\r?\n/g,'\r\n'));
 }
-for(const file of ['package.json','README.md','README.en.md','LICENSE','THIRD_PARTY_NOTICES.txt'])copy(path.join(project,file),path.join(folder,'app',file));
+for(const file of ['package.json','README.md','README.en.md','README.zh-CN.md','LICENSE','THIRD_PARTY_NOTICES.txt'])copy(path.join(project,file),path.join(folder,'app',file));
 copy(path.join(project,'LICENSE'),path.join(folder,'LICENSE'));
 copy(path.join(project,'dist','index.cjs'),path.join(folder,'app','dist','index.cjs'));
 copyTree(path.join(project,'bin'),path.join(folder,'app','bin'));

@@ -1,8 +1,8 @@
 {
   "archive": "dynamics365-mcp-1.0.0-windows-x64-portable.zip",
-  "bytes": 71041526,
-  "sha256": "754a4d068e5a7d4c70476e40a5113b320609ec4d62607b9add83c7c839d31409",
-  "fileCount": 364,
+  "bytes": 71054580,
+  "sha256": "c12461229721a93e73262ed47c9befa906e320cc22d98d67da3ef99aad34d300",
+  "fileCount": 365,
   "runtimes": {
     "node": "v24.18.0",
     "dotnet": "10.0.13"

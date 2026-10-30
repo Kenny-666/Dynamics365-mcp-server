@@ -1,6 +1,6 @@
 # Detailed tool reference
 
-This guide retains detailed tool parameters, preview behavior, concurrency rules, and save/publication semantics. Step numbers trace implementation history. Start with the [English README](../README.en.md) or [Chinese README](../README.md). Current tool names and input constraints are defined by MCP tools/list and the implementations in src/tools and src/tool_handler.ts.
+This guide retains detailed tool parameters, preview behavior, concurrency rules, and save/publication semantics. Step numbers trace implementation history. Start with the [English README](../README.md) or [Chinese README](../README.zh-CN.md). Current tool names and input constraints are defined by MCP tools/list and the implementations in src/tools and src/tool_handler.ts.
 
 A Model Context Protocol (MCP) server implementation for Microsoft Dataverse / Dynamics 365. It enables AI assistants (like Cursor, Windsurf, Claude Desktop) to interact directly with your Dynamics 365 environment through the standard MCP protocol.
 

@@ -2,7 +2,7 @@
 
 本包包含已构建的 MCP 服务、Node.js 和 .NET 10 Runtime。解压后即可配置使用，无需安装 Node.js、npm、.NET SDK 或下载依赖。适用于 Windows x64；其他操作系统可使用随附的标准 npm 包并安装相应运行时。
 
-[English](README.en.md) · [完整功能说明](app/README.md) · [84 工具联调覆盖表](app/docs/CRM_TOOL_COVERAGE.md)
+[English](README.en.md) · [完整功能说明](app/README.zh-CN.md) · [84 工具联调覆盖表](app/docs/CRM_TOOL_COVERAGE.md)
 
 ## 三步接入
 

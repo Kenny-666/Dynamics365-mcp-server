@@ -1,6 +1,6 @@
 # Dynamics 365 MCP Server
 
-[简体中文](README.md) | **English**
+[简体中文](README.zh-CN.md) | **English**
 
 Connect AI assistants to Microsoft Dataverse / Dynamics 365 Customer Engagement through the Model Context Protocol (MCP).
 
