@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D365 MCP Debugger | Premium Suite</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar glass">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="gradient-text">D365</span> MCP
+                </div>
+                <div class="status-indicator">
+                    <span class="pulse"></span> Connected
+                </div>
+            </div>
+            <nav class="tool-list" id="toolList">
+                <div class="loader">Loading tools...</div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <h1 id="toolName">Select a tool to begin</h1>
+                <p id="toolDesc" class="subtitle">Dynamics 365 Model Context Protocol Debugging Interface</p>
+            </header>
+
+            <section class="execution-area">
+                <div class="card glass" id="formContainer">
+                    <div class="empty-state">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                        </svg>
+                        <p>Please select a tool from the sidebar to start debugging</p>
+                    </div>
+                </div>
+
+                <div class="card glass result-card" id="resultContainer">
+                    <div class="card-header">
+                        <h3>Response</h3>
+                        <div class="actions">
+                            <button id="copyBtn" class="btn-icon" title="Copy to clipboard">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <pre id="resultOutput">// Results will appear here</pre>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Modals / Notifications -->
+    <div id="toast" class="toast glass"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

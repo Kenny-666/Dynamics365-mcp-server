@@ -1,0 +1,57 @@
+{
+  "name": "dynamics365-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for Dynamics 365 Dataverse - AI-assisted development bridge",
+  "main": "dist/index.cjs",
+  "bin": {
+    "dynamics365-mcp-server": "./bin/dynamics365-mcp-server.js"
+  },
+  "type": "module",
+  "files": [
+    "dist/index.cjs",
+    "bin",
+    "README.md",
+    "THIRD_PARTY_NOTICES.txt"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && tsup",
+    "build:inspector": "node scripts/build-inspector.mjs",
+    "build:release": "node scripts/build-inspector.mjs && tsc --noEmit && tsup",
+    "prepack": "npm run build:release && node scripts/collect-notices.mjs",
+    "test": "tsx --test tests/config.test.mjs tests/runtime.test.mjs tests/legacyMetadata.test.mjs tests/request.test.mjs tests/environment.test.mjs tests/apiOperation.test.mjs tests/solution.test.mjs tests/solutionTransfer.test.mjs tests/solutionVerification.test.mjs tests/ribbon.test.mjs tests/ribbonDeployment.test.mjs tests/query.test.mjs tests/webResource.test.mjs tests/pluginStep.test.mjs tests/pluginImage.test.mjs tests/pluginAssembly.test.mjs tests/recordMutation.test.mjs tests/recordBatch.test.mjs tests/evidence.test.mjs tests/modelMetadata.test.mjs tests/modelStructure.test.mjs tests/modelMaintenance.test.mjs tests/modelChoices.test.mjs tests/modelUi.test.mjs tests/xmlCharacters.test.mjs tests/debug.test.mjs tests/debugHttp.test.mjs tests/startup.test.mjs",
+    "test:smoke": "node --test tests/startup.test.mjs",
+    "debug": "tsx src/debug/server.ts",
+    "start": "node dist/index.cjs",
+    "dev": "tsx src/index.ts",
+    "watch": "tsx watch src/index.ts",
+    "test:contracts": "tsx scripts/qa-local.mjs"
+  },
+  "keywords": [
+    "mcp",
+    "dynamics365",
+    "dataverse",
+    "ai",
+    "cursor",
+    "windsurf"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@xmldom/xmldom": "0.9.12",
+    "axios": "^1.7.9",
+    "axios-ntlm": "^1.4.6",
+    "dotenv": "^16.4.7",
+    "node-cache": "^5.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
