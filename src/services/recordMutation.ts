@@ -228,6 +228,10 @@ export class RecordMutationService {
       if (!result.identityResolved) result.identityIssue = 'D365_RECORD_ID_NOT_RETURNED';
       result.record = response.data ? redact(response.data) : null;
     }
+    if (plan.collectionName === 'sitemaps' && ['create','update','upsert'].includes(plan.operation)) {
+      result.publication = {status:'not_requested',published:null,nextTool:'publish_sitemap',sitemapId:result.id,
+        note:'Saving SiteMap XML does not verify publication. Preview publish_sitemap to compare the saved and published definitions.'};
+    }
     return result;
   }
 }

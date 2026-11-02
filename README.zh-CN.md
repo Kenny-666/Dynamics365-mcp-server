@@ -4,9 +4,9 @@
 
 通过 Model Context Protocol（MCP），让 AI 助手查询和维护 Microsoft Dataverse / Dynamics 365 Customer Engagement。
 
-项目使用 **TypeScript + Dataverse Web API**，提供 **84 个工具**，覆盖记录查询、数据变更、元数据、Web 资源、插件注册、数据模型、诊断审计、解决方案和经典 Ribbon 按钮。通过 **stdio** 接入 MCP 客户端，并提供本地 Web 调试界面。
+项目使用 **TypeScript + Dataverse Web API**，提供 **85 个工具**，覆盖记录查询、数据变更、元数据、Web 资源、插件注册、数据模型、诊断审计、解决方案和经典 Ribbon 按钮。通过 **stdio** 接入 MCP 客户端，并提供本地 Web 调试界面。
 
-**当前状态：**本地构建和 910 项回归通过。已实际调用 65/84 个工具；20 个工具的指定实写回读路径通过，2 个工具的发布请求已受理（页面效果未验收）。19 个尚未调用。所有本次新建的记录、脚本、表、字段、关系、键、选项集、方案及发布者均已清理，既有业务对象修改数为 0。完整验收仍受平台及能力限制，详见 [逐工具覆盖表](docs/CRM_TOOL_COVERAGE.md)。实际能力取决于 CRM 版本、定制支持及连接身份权限；不包含 Finance & Operations 或 Business Central。
+**当前状态：**1.0.1 已补齐 `publish_sitemap`，当前 85 个工具、943 项本地回归通过。已确认旧 ZIP 中“保存站点地图”和“发布”流程脱节，并通过本地 stdio 与假 CRM HTTP 服务验证修复。新工具尚未在同事真实环境验收；历史 65/84 工具联调及其他限制见 [覆盖表](docs/CRM_TOOL_COVERAGE.md)。[原因、升级与发布示例](docs/SITEMAP_PUBLISHING.md)。
 
 [功能清单](#功能清单) · [架构与调用逻辑](#架构与调用逻辑) · [快速开始](#快速开始) · [认证配置](#认证配置) · [使用示例](#使用示例) · [写入与部署](#写入发布与结果判读) · [工具清单](#工具清单) · [测试与验证](#测试与验证)
 
@@ -25,9 +25,10 @@
 | 数据模型与界面定义 | 20 | 表、列、关系、备用键、选项集、表单/视图结构及发布 |
 | Action / Function | 2 | 从当前 CSDL 发现原生操作签名，校验参数并调用 |
 | 解决方案 | 12 | 组件与依赖、ZIP 检查、导出/受限导入、任务状态、快照及验证 |
+| 站点地图发布 | 1 | 最新已保存定义预览、独立 PublishXml、已发布 XML 回读；无需 CSDL |
 | 经典 Ribbon | 6 | 读取定义、编辑本地候选包、受控导入、独立发布与定义回读 |
 
-工具发现使用 MCP `tools/list`，调用使用 `tools/call`。**84 是工具数量，910 是本地测试用例数量，二者不是同一口径。**真实联调按工具逐项跟踪，预览通过、本机夹具、空结果或有限读取不代表完整真实功能验收，见 [84 工具覆盖清单](docs/CRM_TOOL_COVERAGE.md)。详细参数和限制见 [工具参考](docs/TOOL_REFERENCE.md)。
+工具发现使用 MCP `tools/list`，调用使用 `tools/call`。**85 是工具数量，943 是本地测试用例数量，二者不是同一口径。**真实联调按工具逐项跟踪，预览通过、本机夹具、空结果或有限读取不代表完整真实功能验收，见 [85 工具覆盖清单](docs/CRM_TOOL_COVERAGE.md)。详细参数和限制见 [工具参考](docs/TOOL_REFERENCE.md)。
 
 ### 查询、记录与运行证据
 
@@ -105,7 +106,7 @@ sequenceDiagram
     participant R as 工具路由与服务
     participant A as 配置的 CRM Web API
     C->>M: tools/list
-    M-->>C: 84 个工具及输入 Schema
+    M-->>C: 85 个工具及输入 Schema
     C->>M: tools/call(name, arguments)
     M->>R: 分派工具与取消/进度上下文
     alt 离线工具
@@ -171,7 +172,7 @@ npm run build
 
 将 `args` 改为构建文件的**绝对路径**，替换连接参数。Windows JSON 路径可使用 `/`；使用反斜杠时需要写成 `\\`。客户端找不到 node 时，将 `command` 改为 Node 可执行文件的绝对路径。
 
-保存配置并重启客户端中的 MCP 服务，确认能发现 **84 个工具**。然后调用 `get_current_user_context`、`get_environment_capabilities` 检查身份与环境信息；环境能力读取不能代替实际权限和写入验收。
+保存配置并重启客户端中的 MCP 服务，确认能发现 **85 个工具**。然后调用 `get_current_user_context`、`get_environment_capabilities` 检查身份与环境信息；环境能力读取不能代替实际权限和写入验收。
 
 CRM 服务按需初始化：缺少连接配置也能启动并列出工具，首次 CRM 调用才校验配置。修改环境变量后需要重启服务。
 
@@ -379,10 +380,14 @@ flowchart TD
 
 图中的状态核查由调用者触发，不代表后台自动轮询。`verify_ribbon_deployment` 可独立执行只读定义检查，不会自动修复或重发部署；定义匹配仍不证明按钮已通过 UI/运行验收。
 
+## 发布站点地图
+
+保存 `sitemapxml` 后使用 `publish_sitemap`：先预览，再携带 `planHash` 执行。新版直接调用 PublishXml 并回读已发布定义；旧版通用 Action 的 CSDL 前置读取不再影响此专用路径。发布范围、指纹参数和故障判读见 [站点地图发布说明](docs/SITEMAP_PUBLISHING.md)。
+
 ## 工具清单
 
 <details>
-<summary>展开全部 84 个工具</summary>
+<summary>展开全部 85 个工具</summary>
 
 ### 环境与基础元数据（8）
 
@@ -453,6 +458,7 @@ flowchart TD
 - `create_model_column`
 - `update_model_labels`
 - `publish_model_table`
+- `publish_sitemap`
 - `get_model_relationship`
 - `create_model_relationship`
 - `get_model_key`
@@ -521,17 +527,17 @@ npm run debug
 | 项目 | 结果 |
 | --- | --- |
 | 隔离安装与发布构建 | 通过；离线安装 192 个依赖，.NET 构建零警告/错误 |
-| 完整回归 | **910 项通过**，零失败、零跳过；28 个测试文件 |
-| 工具契约 | 84 个输入 Schema 编译成功，工具名称唯一，测试文件发现一致 |
+| 完整回归 | **943 项通过**，零失败、零跳过；29 个测试文件 |
+| 工具契约 | 85 个输入 Schema 编译成功，工具名称唯一，测试文件发现一致 |
 | ZIP 健壮性 | 256 个固定种子截断/变异样本均按预期拒绝 |
 | 实际本机 HTTP | 10 项通过，另有进程内 handler 回归 |
 | 解包后的 stdio / CLI | Node 24.18.0、24.22.1 上各通过 14 项启动检查，无需 node_modules |
-| 已加载 TypeScript 源码覆盖率 | 行 98.71%、分支 90.61%、函数 97.21% |
-| 真实 CRM 联调 | CRM 9.1.7.5 / API v9.1 / AD/NTLM；65/84 工具已调用，20 个指定实写回读路径通过，2 个发布请求受理；所有新建对象已清理 |
+| 历史源码覆盖率（2026-10-29 基线） | 行 98.71%、分支 90.61%、函数 97.21% |
+| 历史真实 CRM 联调（1.0.0） | CRM 9.1.7.5 / API v9.1 / AD/NTLM；65/84 工具已调用，20 个指定实写回读路径通过，2 个发布请求受理；所有新建对象已清理 |
 
-覆盖率统计已加载的 72 个 TypeScript 源文件，不包含未加载源码、子进程 bundle 或 .NET 代码。两个运行时的启动检查与主套件存在场景重叠，不应累加成互不重复的功能测试数量。
+上述历史覆盖率统计旧版本已加载的 72 个 TypeScript 源文件；本补丁未重新统计覆盖率，不包含未加载源码、子进程 bundle 或 .NET 代码。两个运行时的启动检查与主套件存在场景重叠，不应累加成互不重复的功能测试数量。
 
-上述 910 项回归使用离线夹具和请求替身；真实 CRM 结果另见 [逐工具状态与阻断说明](docs/CRM_TOOL_COVERAGE.md)。解除关联仍出现 HTTP 204 但关联未清除，现明确报告 READBACK_MISMATCH；CSDL /$metadata 仍因服务端缓存文件权限返回 500。新建键索引在有界回查中持续 Pending，Upsert 预览被活动键规则阻断；IsCustomizable=false 另阻断重新激活预览。默认非等宽表单区块的字段添加被明确拒绝，添加脚本库路径已单独验证。未调用项包括 CSDL 依赖、插件实写所需可部署 DLL/注册样本和仅由本地套件验证的纯本机工具；键 Upsert 状态见逐项表。其他认证方式、更广泛权限、并发/异常场景、插件执行及 Ribbon 显示/点击仍待验收；未进行联网依赖漏洞审计或生产压力测试。
+上述 943 项回归使用离线夹具和请求替身；真实 CRM 结果另见 [逐工具状态与阻断说明](docs/CRM_TOOL_COVERAGE.md)。解除关联仍出现 HTTP 204 但关联未清除，现明确报告 READBACK_MISMATCH；CSDL /$metadata 仍因服务端缓存文件权限返回 500。新建键索引在有界回查中持续 Pending，Upsert 预览被活动键规则阻断；IsCustomizable=false 另阻断重新激活预览。默认非等宽表单区块的字段添加被明确拒绝，添加脚本库路径已单独验证。未调用项包括 CSDL 依赖、插件实写所需可部署 DLL/注册样本和仅由本地套件验证的纯本机工具；键 Upsert 状态见逐项表。其他认证方式、更广泛权限、并发/异常场景、插件执行及 Ribbon 显示/点击仍待验收；未进行联网依赖漏洞审计或生产压力测试。
 
 在源码目录复现：
 

@@ -1,3 +1,5 @@
+Version 1.0.1 has 85 tools. The added `publish_sitemap` workflow is documented in [SiteMap publication](SITEMAP_PUBLISHING.md); the existing tool entries below remain applicable.
+
 # Detailed tool reference
 
 This guide retains detailed tool parameters, preview behavior, concurrency rules, and save/publication semantics. Step numbers trace implementation history. Start with the [English README](../README.md) or [Chinese README](../README.zh-CN.md). Current tool names and input constraints are defined by MCP tools/list and the implementations in src/tools and src/tool_handler.ts.

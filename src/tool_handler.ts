@@ -49,6 +49,8 @@ import { ModelChoiceService } from './services/modelChoices.js';
 import { modelChoiceTools } from './tools/modelChoiceTools.js';
 import { ModelUiService } from './services/modelUi.js';
 import { modelUiTools } from './tools/modelUiTools.js';
+import { SiteMapPublicationService } from './services/siteMapPublication.js';
+import { siteMapTools } from './tools/siteMapTools.js';
 import { readConfig, validateConfig } from './config.js';
 import type { QueryOptions } from './types/query.js';
 import { clearQueryContinuations } from './services/queryPaging.js';
@@ -73,6 +75,8 @@ function createServices() {
     authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'},pluginStepService);
   return {
     auth,
+    siteMapPublicationService:new SiteMapPublicationService(auth,{orgUrl:config.orgUrl || config.environmentUrl,
+      authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'}),
     ribbonDeploymentService:new RibbonDeploymentService(auth,{orgUrl:config.orgUrl || config.environmentUrl,
       authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'}),
     ribbonService:new RibbonService(auth,{orgUrl:config.orgUrl || config.environmentUrl,
@@ -142,6 +146,7 @@ function queryInput(args: any): QueryOptions {
 }
 
 export const tools = [
+  ...siteMapTools,
   ...solutionTools,
   ...solutionTransferTools,
   ...solutionVerificationTools,
@@ -321,6 +326,7 @@ export async function handleToolCall(name: string, args: any = {}, context:Mutat
     return { success: true, message: 'Server cache cleared' };
   }
   services ??= createServices();
+  if (name === 'publish_sitemap') return services.siteMapPublicationService.publish(args,context.signal);
   const { entitySchemaService, optionSetService, relationshipService,
     fetchXmlService, metadataService, recordService, environmentService, webResourceService, pluginStepService,
     recordMutationService,recordBatchService,diagnosticService,securityEvidenceService,auditEvidenceService,modelMetadataService,modelStructureService,modelChoiceService,modelUiService,pluginImageService,pluginAssemblyService,modelMaintenanceService,apiOperationService,solutionService,solutionTransferService,solutionSnapshotService,solutionImportLogService,solutionVerificationService,ribbonService,ribbonDeploymentService } = services;

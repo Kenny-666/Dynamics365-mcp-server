@@ -21,7 +21,7 @@ try {
   await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{clearInterval(poll);reject(Error('Debugger startup timeout'));},10000);const poll=setInterval(()=>{if(output.includes('Debug GUI is running')){clearInterval(poll);clearTimeout(timer);resolve();}else if(child.exitCode!==null){clearInterval(poll);clearTimeout(timer);reject(Error('Debugger exited before listening'));}},25);});
   assert.equal((await request('/')).status,200);
   assert.equal((await request('/',{method:'HEAD'})).body,'');
-  assert.equal(JSON.parse((await request('/api/tools')).body).length,84);
+  assert.equal(JSON.parse((await request('/api/tools')).body).length,85);
   assert.equal((await request('/api/tools',{headers:{origin:'https://example.invalid'}})).status,403);
   assert.equal((await request('/api/call',{method:'POST',headers:{'content-type':'text/plain'},body:'{}'})).status,415);
   const invalid=await request('/api/call',{method:'POST',headers:{'content-type':'application/json'},body:'{"fake_secret":"QA_MARKER"'});assert.equal(invalid.status,400);assert.ok(!invalid.body.includes('QA_MARKER'));

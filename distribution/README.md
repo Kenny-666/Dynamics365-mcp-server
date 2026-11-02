@@ -1,6 +1,6 @@
 # 便携包构建
 
-Windows 接收者使用 `dynamics365-mcp-1.0.0-windows-x64-portable.zip`。其根目录包含中文/英文说明、配置模板、自检及客户端配置生成脚本；启动时使用包内 Node.js 和 .NET 10 Runtime。标准 `.tgz` 适合已有 Node.js 环境的接收者。
+Windows 接收者使用 `dynamics365-mcp-1.0.1-windows-x64-portable.zip`。其根目录包含中文/英文说明、配置模板、自检及客户端配置生成脚本；启动时使用包内 Node.js 和 .NET 10 Runtime。标准 `.tgz` 适合已有 Node.js 环境的接收者。
 
 构建时需要项目开发依赖、.NET 10 SDK，以及准备分发的 Windows x64 Node.js 和 .NET 10 Runtime。先运行 `npm pack`，自动构建并收集生产依赖许可声明，然后执行：
 
@@ -10,7 +10,7 @@ node scripts/build-portable.mjs `
   --node-license 'C:/BuildInputs/node-LICENSE.txt' `
   --dotnet-root 'C:/Program Files/dotnet' `
   --dotnet-version 10.0.13 `
-  --output '../artifacts/distribution-2026-10-29' `
+  --output '../artifacts/distribution-2026-11-02' `
   --stage '.cache/portable-build-fresh'
 ```
 

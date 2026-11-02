@@ -10,7 +10,7 @@ import { toolErrorPayload } from './errors.js';
 const server = new Server(
     {
         name: 'dynamics365-mcp-server',
-        version: '1.0.0',
+        version: '1.0.1',
     },
     {
         capabilities: {

@@ -1,4 +1,8 @@
-# 84 个工具的联调覆盖表 / 84-tool integration coverage
+# 工具覆盖追踪：当前 85 工具 / Current 85-tool coverage
+
+2026-11-02：1.0.1 新增 `publish_sitemap`，32 项专项、943 项全量本地回归及 stdio/本机假 CRM HTTP 联调通过，真实同事环境待验。下面的 84 行及统计保留为 2026-10-29 的历史真实联调证据，不将本地测试算作真实工具验收。/ The new tool has local and fake-CRM evidence only; the following 84-tool table is historical live evidence.
+
+[新增工具的原因与用法 / SiteMap publication](SITEMAP_PUBLISHING.md)
 
 日期 / Date: 2026-10-29。
 
@@ -135,3 +139,9 @@
 修复平台 CSDL 缓存权限，调查关系解除无效的服务端原因；准备可部署的专用测试插件 DLL 及注册场景，继续方案/Ribbon 导入发布和实际页面点击验收。其他认证方式、更广泛权限、并发和全部异常路径、联网依赖漏洞审计、生产压力测试仍未完成。/ Platform remediation and deployable plugin fixtures are needed; UI and broader acceptance remain pending.
 
 本公开表不含内网地址、账号、对象 ID、密码或令牌。私有证据仅在被忽略的本机 .cache。/ Raw evidence remains in the ignored local cache.
+
+## 1.0.1 新增工具 / Added tool
+
+| 工具 | 当前验证 | 剩余事项 |
+| --- | --- | --- |
+| `publish_sitemap` | 预览、原生发布及独立回读、无效 204 检测、三种认证请求分支均有本地证据 | 真实 CRM 与浏览器导航验收待完成 |

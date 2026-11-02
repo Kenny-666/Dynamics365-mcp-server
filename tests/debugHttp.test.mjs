@@ -22,7 +22,7 @@ test('debugger HTTP routes preserve protocol, input privacy and request limits',
       if(body!==undefined)request.emit('data',Buffer.isBuffer(body)?body:Buffer.from(body));request.emit('end');
     });
     await t.test('tool inventory is returned as JSON with a no-sniff header',async()=>{
-      const r=await invoke({url:'/api/tools'}),items=JSON.parse(r.body);assert.equal(r.status,200);assert.equal(items.length,84);assert.equal(new Set(items.map(i=>i.name)).size,84);assert.equal(r.headers['x-content-type-options'],'nosniff');
+      const r=await invoke({url:'/api/tools'}),items=JSON.parse(r.body);assert.equal(r.status,200);assert.equal(items.length,85);assert.equal(new Set(items.map(i=>i.name)).size,85);assert.equal(r.headers['x-content-type-options'],'nosniff');
     });
     await t.test('static GET and HEAD return the UI without a body on HEAD',async()=>{
       const get=await invoke(),head=await invoke({method:'HEAD'});assert.equal(get.status,200);assert.match(get.body,/<html/i);assert.equal(head.status,200);assert.equal(head.body,'');assert.match(get.headers['content-type'],/text\/html/);

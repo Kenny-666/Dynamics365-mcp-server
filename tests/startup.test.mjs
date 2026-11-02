@@ -12,6 +12,7 @@ const manifest = JSON.parse(await readFile(join(projectRoot, 'package.json'), 'u
 const entry = resolve(process.env.D365_SMOKE_ENTRY || join(projectRoot, manifest.main));
 const guard = join(projectRoot, 'tests/fixtures/deny-network.cjs');
 const expectedTools = [
+  'publish_sitemap',
   'import_ribbon_solution','publish_ribbon_solution','verify_ribbon_deployment',
   'get_ribbon_definition','inspect_ribbon_solution','edit_ribbon_solution',
   'get_solution_snapshot','compare_solution_snapshots','verify_solution_deployment','get_solution_import_log',

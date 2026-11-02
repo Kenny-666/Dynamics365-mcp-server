@@ -57,10 +57,10 @@ for(const [relative,entry] of Object.entries(lock.packages).filter(([key,value])
   notices.push({name:module.name,version:module.version,license:module.license??entry.license??'See upstream declaration',author:module.author??null,repository:module.repository??null,licenseFiles});
 }
 fs.writeFileSync(path.join(folder,'licenses','npm-notices.json'),JSON.stringify({scope:'Installed production dependency tree; some entries may not contribute code to the bundled server.',packages:notices},null,2)+'\n');
-const info={name:pkg.name,version:pkg.version,validationDate:'2026-10-29',target:'windows-x64',transport:'stdio',toolCount:84,
+const info={name:pkg.name,version:pkg.version,validationDate:'2026-11-02',target:'windows-x64',transport:'stdio',toolCount:85,
   bundledNode:node.version,bundledDotnet:netVersion,bundleSHA256:digest(path.join(folder,'app','dist','index.cjs')),
   nodeExeSHA256:digest(nodeExe),nodeLicenseSource:'https://raw.githubusercontent.com/nodejs/node/'+node.version+'/LICENSE',
-  localRegression:{passed:911,failed:0,skipped:0},liveCoverage:{toolsCalled:65,totalTools:84,writeReadbackPathsPassed:21,publicationRequestsAccepted:2,fullAcceptanceComplete:false},
+  localRegression:{passed:943,failed:0,skipped:0},liveCoverage:{baselineToolsCalled:65,baselineToolCount:84,siteMapPublicationLiveVerified:false,fullAcceptanceComplete:false},
   credentialPolicy:'Placeholder templates only. No real CRM connection settings or credentials are included.'};
 fs.writeFileSync(path.join(folder,'release-info.json'),JSON.stringify(info,null,2)+'\n');
 const files=[];function walk(directory){for(const entry of fs.readdirSync(directory,{withFileTypes:true})){const full=path.join(directory,entry.name);assert.ok(!entry.isSymbolicLink(),'Links are not allowed in a portable archive.');if(entry.isDirectory())walk(full);else{
@@ -68,7 +68,7 @@ const files=[];function walk(directory){for(const entry of fs.readdirSync(direct
   if(/\.(?:cjs|js|md|json|txt|example|cmd)$/i.test(relative))assert.ok(!/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(fs.readFileSync(full,'utf8')),'Private key material found in release.');
   files.push({path:relative,size:fs.statSync(full).size,sha256:digest(full)});
 }}}walk(folder);files.sort((a,b)=>a.path.localeCompare(b.path));
-fs.writeFileSync(path.join(folder,'manifest.json'),JSON.stringify({version:pkg.version,toolCount:84,hashAlgorithm:'SHA-256',files},null,2)+'\n');
+fs.writeFileSync(path.join(folder,'manifest.json'),JSON.stringify({version:pkg.version,toolCount:85,hashAlgorithm:'SHA-256',files},null,2)+'\n');
 execFileSync('tar.exe',['-a','-c','-f',zip,'-C',stage,name],{stdio:'inherit'});
 fs.writeFileSync(path.join(out,'使用说明.md'),[
   '# Dynamics 365 MCP 分发包',
