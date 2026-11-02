@@ -94,6 +94,17 @@ export class SecurityEvidenceService {
       note:'Native record rights are evidence at read time. They do not explain every role/share source or guarantee field access and business-rule success.'};
   }); }
 
+  privileges(raw:unknown,signal?:AbortSignal) { return protect(async () => {
+    const a=input(raw,['role_id','top','max_pages']),roleId=guid(a.role_id,'role_id');
+    const top=integer(a.top,'top',50,1,100),maxPages=integer(a.max_pages,'max_pages',5,1,20),reader=new EvidenceReader(this.client,signal);
+    const role=await reader.get('/roles('+roleId+')?$select=roleid,name,_businessunitid_value');
+    if(rowGuid(role.roleid)!==roleId)malformed();
+    const page=await reader.list('/roleprivilegescollection?'+query({'$select':'roleprivilegeid,roleid,privilegeid,privilegedepthmask','$filter':'roleid eq '+roleId,'$orderby':'roleprivilegeid asc','$top':String(top)}),top,maxPages);
+    const items=page.rows.map((entry:Row)=>{if(rowGuid(entry.roleid)!==roleId || !Number.isInteger(entry.privilegedepthmask))malformed();return {rolePrivilegeId:rowGuid(entry.roleprivilegeid),privilegeId:rowGuid(entry.privilegeid),depthMask:entry.privilegedepthmask};});
+    return {success:true,role:pick(role,['roleid','name','_businessunitid_value']),items,count:items.length,paging:page.paging,
+      note:'Native direct role privilege rows only; inherited, team and effective record access are not computed. Depth masks are returned as provided by CRM.'};
+  }); }
+
   private async rolePage(reader:EvidenceReader,endpoint:string,top:number) {
     const page = await reader.list(endpoint + '?' + query({'$select':catalogs.role.fields.join(','),'$orderby':'roleid asc','$top':String(top)}),top,5);
     return this.catalogPage(page,catalogs.role);

@@ -374,3 +374,14 @@ test('MCP routes all four tools to the shared client and exposes partial publish
     }
   }
 });
+test('Web Resource backup restore uses unpublished data and ETag without publishing',async()=>{
+ let version=1,resource={webresourceid:ID,name:'new_/test.js',webresourcetype:3,ismanaged:false,displayname:'Old',description:null,content:Buffer.from('old').toString('base64')};const calls=[];
+ const client={makeRequest:async path=>{assert.match(path,/EntityDefinitions/);return {LogicalName:'webresource',IsOptimisticConcurrencyEnabled:true};},requestWithResponse:async(path,method='GET',body,opts={})=>{calls.push({path,method});if(method==='GET')return {status:200,data:{...resource,'@odata.etag':`W/"${version}"`},headers:{}};assert.equal(opts.headers['If-Match'],`W/"${version}"`);resource={...resource,...body};version++;return {status:204,data:null,headers:{}};}};
+ const service=new WebResourceService(client,environment),snapshot=await service.getBackup({id:ID});resource.content=Buffer.from('new').toString('base64');version++;
+ const p=await service.restoreBackup({id:ID,data:snapshot.data});assert.equal(p.dryRun,true);assert.equal(calls.filter(c=>c.method==='PATCH').length,0);
+ const result=await service.restoreBackup({id:ID,data:snapshot.data,dry_run:false,expected_hash:p.definitionHash,if_match:p.etag});assert.equal(result.readback.status,'matched');assert.equal(resource.content,snapshot.data.content);assert.ok(!calls.some(c=>c.path.includes('PublishXml')));
+});
+test('Web Resource restore refuses unsupported optimistic concurrency',async()=>{
+ const client={makeRequest:async()=>({LogicalName:'webresource',IsOptimisticConcurrencyEnabled:false}),requestWithResponse:async()=>({status:200,data:{webresourceid:ID,name:'new_/x.js',webresourcetype:3,ismanaged:false,displayname:'X',description:null,content:'eA==','@odata.etag':'W/"1"'},headers:{}})};
+ const service=new WebResourceService(client,environment),snapshot=await service.getBackup({id:ID});await assert.rejects(service.restoreBackup({id:ID,data:snapshot.data}),/optimistic concurrency/);
+});

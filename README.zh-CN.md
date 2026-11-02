@@ -1,12 +1,14 @@
+> 1.1.0 版本默认提供 116 个工具，另有 1 个可选顾问工具。发布构建通过 1,033 项本地测试及 117 个工具 Schema 检查；新增功能仍待真实 CRM 环境验收。
+
 # Dynamics 365 MCP Server
 
 **简体中文** | [English](README.md)
 
 通过 Model Context Protocol（MCP），让 AI 助手查询和维护 Microsoft Dataverse / Dynamics 365 Customer Engagement。
 
-项目使用 **TypeScript + Dataverse Web API**，提供 **85 个工具**，覆盖记录查询、数据变更、元数据、Web 资源、插件注册、数据模型、诊断审计、解决方案和经典 Ribbon 按钮。通过 **stdio** 接入 MCP 客户端，并提供本地 Web 调试界面。
+项目使用 **TypeScript + Dataverse Web API**，默认提供 **116 个工具**，覆盖记录查询、数据变更、元数据、Web 资源、插件注册、数据模型、诊断审计、解决方案和经典 Ribbon 按钮。通过 **stdio** 接入 MCP 客户端，并提供本地 Web 调试界面。
 
-**当前状态：**1.0.1 已补齐 `publish_sitemap`，当前 85 个工具、943 项本地回归通过。已确认旧 ZIP 中“保存站点地图”和“发布”流程脱节，并通过本地 stdio 与假 CRM HTTP 服务验证修复。新工具尚未在同事真实环境验收；历史 65/84 工具联调及其他限制见 [覆盖表](docs/CRM_TOOL_COVERAGE.md)。[原因、升级与发布示例](docs/SITEMAP_PUBLISHING.md)。
+**历史验证：**1.0.1 已补齐 `publish_sitemap`，当时 85 个工具的版本通过 943 项本地回归；1.1.0 已通过 1,033 项本地回归，新增功能仍待真实 CRM 验收。已确认旧 ZIP 中“保存站点地图”和“发布”流程脱节，并通过本地 stdio 与假 CRM HTTP 服务验证修复。新工具尚未在同事真实环境验收；历史 65/84 工具联调及其他限制见 [覆盖表](docs/CRM_TOOL_COVERAGE.md)。[原因、升级与发布示例](docs/SITEMAP_PUBLISHING.md)。
 
 [功能清单](#功能清单) · [架构与调用逻辑](#架构与调用逻辑) · [快速开始](#快速开始) · [认证配置](#认证配置) · [使用示例](#使用示例) · [写入与部署](#写入发布与结果判读) · [工具清单](#工具清单) · [测试与验证](#测试与验证)
 
@@ -28,7 +30,7 @@
 | 站点地图发布 | 1 | 最新已保存定义预览、独立 PublishXml、已发布 XML 回读；无需 CSDL |
 | 经典 Ribbon | 6 | 读取定义、编辑本地候选包、受控导入、独立发布与定义回读 |
 
-工具发现使用 MCP `tools/list`，调用使用 `tools/call`。**85 是工具数量，943 是本地测试用例数量，二者不是同一口径。**真实联调按工具逐项跟踪，预览通过、本机夹具、空结果或有限读取不代表完整真实功能验收，见 [85 工具覆盖清单](docs/CRM_TOOL_COVERAGE.md)。详细参数和限制见 [工具参考](docs/TOOL_REFERENCE.md)。
+工具发现使用 MCP `tools/list`，调用使用 `tools/call`。**当前默认提供 116 个工具；943 是旧版的本地测试用例数量，二者不是同一口径。**真实联调按工具逐项跟踪，预览通过、本机夹具、空结果或有限读取不代表完整真实功能验收，见 [85 工具覆盖清单](docs/CRM_TOOL_COVERAGE.md)。详细参数和限制见 [工具参考](docs/TOOL_REFERENCE.md)。
 
 ### 查询、记录与运行证据
 
@@ -106,7 +108,7 @@ sequenceDiagram
     participant R as 工具路由与服务
     participant A as 配置的 CRM Web API
     C->>M: tools/list
-    M-->>C: 85 个工具及输入 Schema
+    M-->>C: 默认 116 个工具及输入 Schema
     C->>M: tools/call(name, arguments)
     M->>R: 分派工具与取消/进度上下文
     alt 离线工具
@@ -172,7 +174,7 @@ npm run build
 
 将 `args` 改为构建文件的**绝对路径**，替换连接参数。Windows JSON 路径可使用 `/`；使用反斜杠时需要写成 `\\`。客户端找不到 node 时，将 `command` 改为 Node 可执行文件的绝对路径。
 
-保存配置并重启客户端中的 MCP 服务，确认能发现 **85 个工具**。然后调用 `get_current_user_context`、`get_environment_capabilities` 检查身份与环境信息；环境能力读取不能代替实际权限和写入验收。
+保存配置并重启客户端中的 MCP 服务，默认分组下确认能发现 **116 个工具**。然后调用 `get_current_user_context`、`get_environment_capabilities` 检查身份与环境信息；环境能力读取不能代替实际权限和写入验收。
 
 CRM 服务按需初始化：缺少连接配置也能启动并列出工具，首次 CRM 调用才校验配置。修改环境变量后需要重启服务。
 
@@ -387,7 +389,7 @@ flowchart TD
 ## 工具清单
 
 <details>
-<summary>展开全部 85 个工具</summary>
+<summary>展开 1.0.1 基线的 85 个工具</summary>
 
 ### 环境与基础元数据（8）
 
@@ -522,22 +524,22 @@ npm run debug
 
 ## 测试与验证
 
-最近一次全面本地测试：**2026-10-29**。
+最近一次全面本地测试：**2026-11-02**。
 
 | 项目 | 结果 |
 | --- | --- |
-| 隔离安装与发布构建 | 通过；离线安装 192 个依赖，.NET 构建零警告/错误 |
-| 完整回归 | **943 项通过**，零失败、零跳过；29 个测试文件 |
-| 工具契约 | 85 个输入 Schema 编译成功，工具名称唯一，测试文件发现一致 |
+| 依赖检查与发布构建 | 已验证现有锁定依赖；.NET 构建零警告/错误 |
+| 完整回归 | **1,033 项通过**，零失败、零跳过；56 个测试文件 |
+| 工具契约 | 117 个已注册输入 Schema 编译成功，工具名称唯一，测试文件发现一致 |
 | ZIP 健壮性 | 256 个固定种子截断/变异样本均按预期拒绝 |
 | 实际本机 HTTP | 10 项通过，另有进程内 handler 回归 |
-| 解包后的 stdio / CLI | Node 24.18.0、24.22.1 上各通过 14 项启动检查，无需 node_modules |
+| 打包 stdio / CLI | 16 项启动检查通过；本机假 CRM 的 SiteMap 打包验证通过，默认 116 个工具且零真实 CRM 请求 |
 | 历史源码覆盖率（2026-10-29 基线） | 行 98.71%、分支 90.61%、函数 97.21% |
 | 历史真实 CRM 联调（1.0.0） | CRM 9.1.7.5 / API v9.1 / AD/NTLM；65/84 工具已调用，20 个指定实写回读路径通过，2 个发布请求受理；所有新建对象已清理 |
 
 上述历史覆盖率统计旧版本已加载的 72 个 TypeScript 源文件；本补丁未重新统计覆盖率，不包含未加载源码、子进程 bundle 或 .NET 代码。两个运行时的启动检查与主套件存在场景重叠，不应累加成互不重复的功能测试数量。
 
-上述 943 项回归使用离线夹具和请求替身；真实 CRM 结果另见 [逐工具状态与阻断说明](docs/CRM_TOOL_COVERAGE.md)。解除关联仍出现 HTTP 204 但关联未清除，现明确报告 READBACK_MISMATCH；CSDL /$metadata 仍因服务端缓存文件权限返回 500。新建键索引在有界回查中持续 Pending，Upsert 预览被活动键规则阻断；IsCustomizable=false 另阻断重新激活预览。默认非等宽表单区块的字段添加被明确拒绝，添加脚本库路径已单独验证。未调用项包括 CSDL 依赖、插件实写所需可部署 DLL/注册样本和仅由本地套件验证的纯本机工具；键 Upsert 状态见逐项表。其他认证方式、更广泛权限、并发/异常场景、插件执行及 Ribbon 显示/点击仍待验收；未进行联网依赖漏洞审计或生产压力测试。
+上述 1,033 项回归使用离线夹具和请求替身；真实 CRM 结果另见 [逐工具状态与阻断说明](docs/CRM_TOOL_COVERAGE.md)。解除关联仍出现 HTTP 204 但关联未清除，现明确报告 READBACK_MISMATCH；CSDL /$metadata 仍因服务端缓存文件权限返回 500。新建键索引在有界回查中持续 Pending，Upsert 预览被活动键规则阻断；IsCustomizable=false 另阻断重新激活预览。默认非等宽表单区块的字段添加被明确拒绝，添加脚本库路径已单独验证。未调用项包括 CSDL 依赖、插件实写所需可部署 DLL/注册样本和仅由本地套件验证的纯本机工具；键 Upsert 状态见逐项表。其他认证方式、更广泛权限、并发/异常场景、插件执行及 Ribbon 显示/点击仍待验收；未进行联网依赖漏洞审计或生产压力测试。
 
 在源码目录复现：
 
@@ -608,3 +610,60 @@ docs/                      详细工具参考
 ## 许可证
 
 当前 [package.json](package.json) 中的许可证声明为 **MIT**，源码目录尚未包含 LICENSE 正文；正式开源发布前需要补齐许可证文件，并确认所包含代码与第三方依赖的授权说明。
+
+### 可选工具分组
+
+设置 `D365_TOOLSETS` 可限制客户端发现和调用的工具。可选分组为 `query`（查询）、`data`（数据写入）、`config`（配置）、`deploy`（部署）和 `diagnostics`（诊断），例如 `D365_TOOLSETS=query,config`。不设置或设置为 `all` 时提供默认 CRM 工具；可选顾问模块需显式选择 `consultant`；修改后需要重启服务。未知分组会导致启动失败。
+
+`edit_sitemap_xml` 在本地生成候选站点地图 XML，支持新增分组、子区域、设置 Title 属性、按 LCID 设置多语言标题和删除子区域。它不会保存或发布；请先检查 XML 与多语言 Titles，再使用 `update_existing_record` 保存并通过 `publish_sitemap` 单独发布。多语言标题使用 `set_localized_title`、`language_code` 和 `title`，仅修改指定 LCID。
+
+`inspect_sitemap_applications` 根据站点地图 ID 只读查找直接关联的应用。结果受当前账号权限影响，不代表完整依赖、应用发布状态或浏览器实际效果；使用 `publish_sitemap` 另行预览发布范围。
+
+### 命名环境配置
+
+可通过环境变量保存多组配置，并在启动进程时用 `D365_PROFILE` 选择一组。例如：
+
+```dotenv
+D365_PROFILE=TEST
+D365_PROFILE_TEST__AUTH_TYPE=op_ad
+D365_PROFILE_TEST__ORG_URL=https://crm-test.example.invalid
+D365_PROFILE_TEST__AD_USERNAME=example
+D365_PROFILE_TEST__AD_DOMAIN=DOMAIN
+D365_PROFILE_TEST__AD_PASSWORD=replace-me
+```
+
+所有 CRM 配置项均使用 `D365_PROFILE_环境名__配置项` 命名。选中配置不会继承未加前缀的 CRM 参数或其他环境的凭据；没有配置时会报错。每次工具调用可通过 `environment_profile` 指定命名环境；省略时使用 `D365_PROFILE` 或原有默认配置。各环境连接和缓存隔离，单进程最多启用 16 个环境。密码示例仅作占位，不要提交真实凭据。
+
+`publish_appmodule` 先返回发布预览哈希；执行需要提供该哈希并设置 `allow_app_publish=true`。受理成功不代表应用运行或依赖已验证；结果未知不会自动重试。
+
+`save_sitemap_with_journal` 在有明确 ETag 的环境下先备份站点地图 XML 再保存，`rollback_sitemap_journal` 可预览并恢复已核验版本。须设置绝对路径 `D365_JOURNAL_DIR`；日志包含 CRM 原始 XML，应由使用者保护该目录。保存和回滚均不会发布，版本或内容变化时拒绝回滚；缺少写入响应 ETag 时无法确认可回滚状态。该日志仅覆盖通过上述工具执行的站点地图 XML 保存。
+
+`update_record_with_journal` 和 `rollback_record_journal` 支持普通记录简单字段的受保护更新与有限恢复。只支持字符串、数字、布尔值和 null，不支持关联绑定、创建或删除。日志包含原始字段值，须保护 `D365_JOURNAL_DIR`；其他写入工具不会自动创建此日志。
+
+`list_change_journal` 和 `get_change_journal` 可在进程重启后查询当前 CRM 环境及用户的日志摘要，不返回备份字段值或 XML。日志状态只能提示是否需要继续预览，实际能否回滚仍以回滚工具的并发检查为准。
+
+设置 `D365_AUDIT_WRITES=true` 并配置绝对路径 `D365_JOURNAL_DIR` 后，CRM 写入类工具会在调用前创建持久事件，结束后记录调用完成或失败；预览调用也可能被记录。事件不保存调用参数、字段值或返回内容，`call_completed` 仅表示工具调用正常返回，不能证明 CRM 已写入或发布。事件本身不提供回滚；只有专用日志工具支持受限回滚。日志不可写时会阻止新调用；调用后更新日志失败时必须先检查 CRM 目标，不自动重试。离线工具不记录到 CRM 日志。
+
+`plan_sitemap_publication` 汇总站点地图发布预览、直接关联应用、有限范围的原生依赖和各应用发布预览；依赖接口或关联读取不可用时会返回部分结果。它不执行发布，各组件须分别提交并检查各自结果。
+
+`backup_customization` 支持备份保存但可能未发布的 Web 资源、主窗体和公共视图；`restore_customization_backup` 在新预览、目标版本和原生 ETag 检查后恢复，并独立回读。窗体与视图恢复需提供 `solution_unique_name`。两项均不发布；备份文件含原始内容，应保护 `D365_JOURNAL_DIR`。当前只支持未托管 Web 资源、主窗体和公共系统视图；CRM 不支持所需 ETag 时禁止恢复。
+
+标准 CRM 备注附件支持 `list_note_attachments`、`download_note_attachment`、`download_note_attachments`、`upload_note_attachments` 和 `delete_note_attachments`。上传与删除默认预览，执行须提供当前 `planHash`；批量写入逐项执行，失败或结果未知时停止。文件限制为单个 5 MiB、每批 20 MiB；不覆盖本地已有文件，不包含企业专用存储。删除要求 CRM 支持乐观并发和特定 ETag。
+
+组织或个人 CRM Word 模板可通过 `list_word_templates`、`download_word_template` 和 `change_word_template` 管理。写入默认预览，创建和更新检查 DOCX 容器结构；更新与删除要求 CRM 支持乐观并发和 ETag。CRM 接受写入不代表模板映射或生成文档已验证。
+
+系统及个人图表可通过 `list_crm_charts`、`get_crm_chart` 和 `change_crm_chart` 管理。系统图表写入须指定未托管解决方案，保存后不会自动发布；可单独预览 `publish_model_table`，注意其表级发布范围。更新和删除要求 CRM 支持 ETag。XML 检查只验证受限结构，不等同于运行时或完整 XSD 验证。
+
+`update_crm_user_profile` 支持预览后更新用户基本资料或启停状态（需要 ETag，启停需额外标记）；`manage_security_role` 可预览并创建、更新或删除未托管角色（不会修改权限）；`create_onprem_domain_user` 可预览并创建本地部署 AD/IFD 域用户；`manage_user_roles` 支持预览、分配及移除直接角色并逐项回读；`list_role_privileges` 返回角色直接权限 ID 和深度掩码；`change_role_privilege` 可在当前 CSDL 支持时预览后添加或移除单项直接权限。权限级别更改须先单独移除再添加，并非原子操作。角色关联无法原子锁定，执行需要明确允许未受保护写入；跨业务单位需要单独标记并由 CRM 支持。直接角色与权限行不等同于团队继承或记录的有效权限。
+
+### 可选实施顾问模块
+
+将 `D365_TOOLSETS` 设为 `consultant`，或将 `consultant` 与其他工具组组合（例如 `query,consultant`），并将 `D365_CONSULTANT_DIR` 指向已存在的本机绝对目录。默认 `all` 不加载此模块。模块在本地工作，不连接 CRM 或上传文件；项目材料和生成文件可能包含客户数据，请保护目录。
+
+`manage_consultant_project` 使用 `action` 选择操作：`create_project`、`import_material`、`list_assets`、`generate_document`、`generate_uat`、`generate_prototype`、`compare_document_versions`、`restore_asset`。项目 ID 使用字母开头的字母、数字、下划线或短横线。所有生成文件使用新 ID，恢复会生成新版本，不覆盖旧文件。
+
+```json
+{"action":"generate_document","project_id":"Demo","title":"实施方案","spec":{"title":"需求说明","sections":[{"heading":"业务目标","body":"填写实施范围与验收标准"}]}}
+```
+
+UAT 的 `spec` 使用 `cases` 数组，每项必须包含 `id`、`scenario`、`expected`，还可包含 `preconditions`、`steps`、`actual`、`status`、`tester`；原型的 `spec` 使用 `title`、可选 `description` 和 `fields` 数组；也可用 `pages` 数组，每页包含 `title` 和 `fields`。字段含 `label`、`type`、`placeholder`。HTML 为离线演示，不会写入 CRM。

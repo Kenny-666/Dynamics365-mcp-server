@@ -1,6 +1,6 @@
 {
   "name": "dynamics365-mcp-server",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "MCP Server for Dynamics 365 Dataverse - AI-assisted development bridge",
   "main": "dist/index.cjs",
   "bin": {
@@ -20,7 +20,7 @@
     "build:inspector": "node scripts/build-inspector.mjs",
     "build:release": "node scripts/build-inspector.mjs && tsc --noEmit && tsup",
     "prepack": "npm run build:release && node scripts/collect-notices.mjs",
-    "test": "tsx --test tests/config.test.mjs tests/runtime.test.mjs tests/legacyMetadata.test.mjs tests/request.test.mjs tests/environment.test.mjs tests/apiOperation.test.mjs tests/solution.test.mjs tests/solutionTransfer.test.mjs tests/solutionVerification.test.mjs tests/ribbon.test.mjs tests/ribbonDeployment.test.mjs tests/query.test.mjs tests/webResource.test.mjs tests/siteMapPublication.test.mjs tests/pluginStep.test.mjs tests/pluginImage.test.mjs tests/pluginAssembly.test.mjs tests/recordMutation.test.mjs tests/recordBatch.test.mjs tests/evidence.test.mjs tests/modelMetadata.test.mjs tests/modelStructure.test.mjs tests/modelMaintenance.test.mjs tests/modelChoices.test.mjs tests/modelUi.test.mjs tests/xmlCharacters.test.mjs tests/debug.test.mjs tests/debugHttp.test.mjs tests/startup.test.mjs",
+    "test": "tsx --test tests/userUpdate.test.mjs tests/rolePrivilege.test.mjs tests/roleDefinition.test.mjs tests/generatedZip.test.mjs tests/consultantArtifacts.test.mjs tests/consultantProject.test.mjs tests/rolePrivileges.test.mjs tests/userProvision.test.mjs tests/roleAssignment.test.mjs tests/chart.test.mjs tests/wordTemplate.test.mjs tests/attachment.test.mjs tests/customizationBackup.test.mjs tests/errorGuidance.test.mjs tests/siteMapPlan.test.mjs tests/toolAuditDispatch.test.mjs tests/toolAudit.test.mjs tests/journalCatalog.test.mjs tests/recordJournal.test.mjs tests/siteMapJournal.test.mjs tests/appPublication.test.mjs tests/profileIsolation.test.mjs tests/environmentProfiles.test.mjs tests/siteMapApplications.test.mjs tests/siteMapEditor.test.mjs tests/configInspection.test.mjs tests/toolsets.test.mjs tests/config.test.mjs tests/runtime.test.mjs tests/legacyMetadata.test.mjs tests/request.test.mjs tests/environment.test.mjs tests/apiOperation.test.mjs tests/solution.test.mjs tests/solutionTransfer.test.mjs tests/solutionVerification.test.mjs tests/ribbon.test.mjs tests/ribbonDeployment.test.mjs tests/query.test.mjs tests/webResource.test.mjs tests/siteMapPublication.test.mjs tests/pluginStep.test.mjs tests/pluginImage.test.mjs tests/pluginAssembly.test.mjs tests/recordMutation.test.mjs tests/recordBatch.test.mjs tests/evidence.test.mjs tests/modelMetadata.test.mjs tests/modelStructure.test.mjs tests/modelMaintenance.test.mjs tests/modelChoices.test.mjs tests/modelUi.test.mjs tests/xmlCharacters.test.mjs tests/debug.test.mjs tests/debugHttp.test.mjs tests/startup.test.mjs",
     "test:smoke": "node --test tests/startup.test.mjs",
     "debug": "tsx src/debug/server.ts",
     "start": "node dist/index.cjs",

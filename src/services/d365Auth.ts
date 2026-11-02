@@ -13,6 +13,7 @@ interface TokenEntry { token: string; expiresAt: number; }
 interface RuntimeDependencies {
   now?: () => number;
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
+  cache?: CacheService;
 }
 
 const responseHeaderNames = new Set([
@@ -44,7 +45,7 @@ export class D365AuthService implements CrmRequestClient {
   constructor(config: D365Config, runtime: RuntimeDependencies = {}) {
     validateConfig(config);
     this.config = {...config, ad:config.ad && {...config.ad}, ifd:config.ifd && {...config.ifd}};
-    this.cache = CacheService.getInstance(config.cacheTtl);
+    this.cache = runtime.cache ?? CacheService.getInstance(config.cacheTtl);
     this.now = runtime.now || Date.now;
     this.delay = runtime.sleep || sleep;
     const orgUrl = (config.orgUrl || config.environmentUrl).replace(/\/+$/, '');

@@ -3,9 +3,11 @@ import NodeCache from 'node-cache';
 export class CacheService {
   private cache: NodeCache;
   private static instance: CacheService;
+  private static instances = new Set<CacheService>();
 
   private constructor(ttlSeconds: number = 7200) {
     this.cache = new NodeCache({ stdTTL: ttlSeconds, checkperiod: 600 });
+    CacheService.instances.add(this);
   }
 
   static getInstance(ttlSeconds?: number): CacheService {
@@ -15,8 +17,10 @@ export class CacheService {
     return CacheService.instance;
   }
 
+  static createIsolated(ttlSeconds?: number): CacheService { return new CacheService(ttlSeconds); }
+
   static flushExisting(): void {
-    CacheService.instance?.flushAll();
+    for (const cache of CacheService.instances) cache.flushAll();
   }
 
   get<T>(key: string): T | undefined {

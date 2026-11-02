@@ -1,3 +1,29 @@
+# Development additions: tools, profiles and journals
+
+The development build exposes 116 tools by default. Set `D365_TOOLSETS` to select `query`, `data`, `config`, `deploy`, `diagnostics` or the opt-in `consultant` group; omit it or use `all` for the default CRM inventory (the consultant module remains excluded). MCP tool calls accept `environment_profile` to select an isolated named profile. If omitted, the process default is used. Define profile settings with `D365_PROFILE_<NAME>__<SETTING>`; settings and credentials are never inherited from another profile.
+
+| Tool | Purpose and safety boundary |
+| --- | --- |
+| `manage_consultant_project` | Opt-in local workspace for materials, editable implementation DOCX, UAT XLSX, offline HTML prototypes and generated version comparison/restore. Requires `D365_CONSULTANT_DIR`; no CRM connection. |
+| User and role tools | Preview ETag-guarded user profile/status updates, unmanaged role creation/update/delete and on-premises domain user creation, assign/remove direct roles with readback, inspect direct role privilege masks, and preview/add/remove individual privileges through CSDL-validated native actions. Effective permissions and cross-business-unit support are not assumed. |
+| Chart tools | List, inspect and preview/create/update/delete system or personal charts. System writes require a solution and separate table publication; update/delete require ETags. |
+| Word template tools | List, download, preview and create/update/delete organization or personal DOCX templates; update and delete require ETags. CRM template mapping and generation are not verified. |
+| Note attachment tools | List, download, upload, batch download and ETag-guarded batch delete standard CRM note attachments. Uploads are bounded and sequential; failed or unknown outcomes are not replayed. |
+| `resolve_model_name` | Resolve exact logical/schema/collection names or localized labels; ambiguous labels return candidates. Optional `entity_logical_name` limits resolution to fields. |
+| `check_model_configuration` | Read-only checks for forms, required fields and view XML. Permissions, defaults, scripts, rules, related fields and aliases limit conclusions. |
+| `edit_sitemap_xml` | Generate local SiteMap XML candidate from structured edits. Use `set_localized_title` with `language_code` to edit one localized title; it does not save or publish. |
+| `plan_sitemap_publication` | Read-only combined SiteMap, direct application associations, bounded required dependencies and individual publication previews. Partial results are identified. |
+| `inspect_sitemap_applications` | Inspect direct AppModule associations for a SiteMap. Does not establish publication or a complete dependency graph. |
+| `publish_appmodule` | Preview and submit AppModule PublishXml using `expected_hash` and `allow_app_publish=true`. Acceptance does not verify runtime or dependencies. |
+| `save_sitemap_with_journal` / `rollback_sitemap_journal` | Preview and conditionally save/restore SiteMap XML with a persistent before-image and ETags. Neither publishes. |
+| `update_record_with_journal` / `rollback_record_journal` | Preview and conditionally update/restore simple scalar fields. Bindings, creates and deletes are excluded. |
+| `backup_customization` / `restore_customization_backup` | Backup and ETag-guarded restore of saved/unpublished unmanaged Web Resources, main forms and public system views. Form/view restore requires a solution; neither publishes. |
+| `list_change_journal` / `get_change_journal` | List or inspect safe journal summaries for the current CRM identity; values and XML are not returned. |
+
+Set `D365_JOURNAL_DIR` to an absolute directory protected by the operating system. Backup entries include original CRM values and XML. `D365_AUDIT_WRITES=true` additionally records write-class tool call events without storing arguments or responses; preview calls may also be recorded. A completed call is not proof of a completed write, and call events cannot be rolled back. The two backup tools require CRM ETags and a verified post-write ETag; rollback must be separately previewed. Unknown outcomes are not automatically retried.
+
+The development build passed the 2026-11-02 full local regression (1,033 tests) and local contract checks; real CRM acceptance remains pending. The reference below describes the earlier 1.0.1 baseline.
+
 Version 1.0.1 has 85 tools. The added `publish_sitemap` workflow is documented in [SiteMap publication](SITEMAP_PUBLISHING.md); the existing tool entries below remain applicable.
 
 # Detailed tool reference

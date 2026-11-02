@@ -1,12 +1,14 @@
+> Version 1.1.0 provides 116 default tools and one opt-in consultant tool. The release build passed 1,033 local tests and compiled all 117 tool schemas; newly added functionality has not yet been fully validated against a live CRM environment.
+
 # Dynamics 365 MCP Server
 
 [简体中文](README.zh-CN.md) | **English**
 
 Connect AI assistants to Microsoft Dataverse / Dynamics 365 Customer Engagement through the Model Context Protocol (MCP).
 
-Built with **TypeScript and the Dataverse Web API**, this server provides **85 tools** for record queries and mutations, metadata, Web Resources, plugin registration, data modeling, diagnostics and auditing, solutions, and classic Ribbon buttons. It connects to MCP clients over **stdio** and includes a local Web debugger.
+Built with **TypeScript and the Dataverse Web API**, this server provides **116 tools by default** for record queries and mutations, metadata, Web Resources, plugin registration, data modeling, diagnostics and auditing, solutions, and classic Ribbon buttons. It connects to MCP clients over **stdio** and includes a local Web debugger.
 
-**Current status:** version 1.0.1 adds `publish_sitemap`, bringing the inventory to 85 tools; all 943 local regression tests pass. The old ZIP lacked a dedicated publication workflow after a SiteMap save. The fix passed actual stdio-to-local-fake-CRM integration; it has not been accepted in the colleague's live environment. Historical 65/84-tool live evidence and other limits remain in the [coverage matrix](docs/CRM_TOOL_COVERAGE.md). See [root cause, upgrade and usage](docs/SITEMAP_PUBLISHING.md).
+**Historical validation:** version 1.0.1 added `publish_sitemap`; its 85-tool baseline passed 943 local regression tests. Version 1.1.0 passed 1,033 local regression tests; live acceptance of the newer tools remains pending. The old ZIP lacked a dedicated publication workflow after a SiteMap save. The fix passed actual stdio-to-local-fake-CRM integration; it has not been accepted in the colleague's live environment. Historical 65/84-tool live evidence and other limits remain in the [coverage matrix](docs/CRM_TOOL_COVERAGE.md). See [root cause, upgrade and usage](docs/SITEMAP_PUBLISHING.md).
 
 [Feature checklist](#feature-checklist) · [Architecture and request flow](#architecture-and-request-flow) · [Quick start](#quick-start) · [Authentication](#authentication) · [Examples](#examples) · [Writes and deployment](#writes-publication-and-result-interpretation) · [Tool catalog](#tool-catalog) · [Testing and validation](#testing-and-validation)
 
@@ -28,7 +30,7 @@ The following capabilities are implemented in code and grouped by usage scenario
 | SiteMap publication | 1 | Saved-definition preview, native PublishXml and independent published XML readback, without CSDL |
 | Classic Ribbon | 6 | Read definitions, edit local candidate packages, perform controlled import, publish separately, and read definitions back |
 
-Discover tools through MCP `tools/list` and invoke them through `tools/call`. **85 is the number of tools; 943 is the number of local test cases. These are different measures.** Live acceptance is tracked per tool. Preview, local-fixture, empty-result, and partial-read checks are not full functional acceptance; see the [85-tool matrix](docs/CRM_TOOL_COVERAGE.md). See the [tool reference](docs/TOOL_REFERENCE.md) for parameters and limitations.
+Discover tools through MCP `tools/list` and invoke them through `tools/call`. **The default development inventory has 116 tools; 943 is the historical baseline local test count. These are different measures.** Live acceptance is tracked per tool. Preview, local-fixture, empty-result, and partial-read checks are not full functional acceptance; see the [85-tool matrix](docs/CRM_TOOL_COVERAGE.md). See the [tool reference](docs/TOOL_REFERENCE.md) for parameters and limitations.
 
 ### Queries, records, and operational evidence
 
@@ -106,7 +108,7 @@ sequenceDiagram
     participant R as Tool routing and services
     participant A as Configured CRM Web API
     C->>M: tools/list
-    M-->>C: 85 tools and input Schemas
+    M-->>C: 116 default tools and input Schemas
     C->>M: tools/call(name, arguments)
     M->>R: Dispatch with cancellation/progress context
     alt Offline tool
@@ -172,7 +174,7 @@ Add the server to a client that supports stdio MCP. The following example applie
 
 Set `args` to the **absolute path** of your build and replace the connection settings. Windows JSON paths can use `/`; backslashes must be escaped as `\\`. If the client cannot find node, use the absolute path to the Node executable in `command`.
 
-Save the configuration and restart the MCP service in your client. Confirm that **85 tools** are listed, then call `get_current_user_context` and `get_environment_capabilities` to inspect the identity and environment. Capability discovery does not establish that permissions or write operations have been validated.
+Save the configuration and restart the MCP service in your client. Confirm that **116 tools** are listed with the default tool groups, then call `get_current_user_context` and `get_environment_capabilities` to inspect the identity and environment. Capability discovery does not establish that permissions or write operations have been validated.
 
 CRM services initialize on demand: the server can start and list tools without connection settings, and validates them on the first CRM call. Restart the service after changing environment variables.
 
@@ -387,7 +389,7 @@ After saving `sitemapxml`, use `publish_sitemap`: preview first, then execute wi
 ## Tool catalog
 
 <details>
-<summary>Expand all 85 tools</summary>
+<summary>Expand the 85 baseline tools from 1.0.1</summary>
 
 ### Environment and metadata (8)
 
@@ -528,8 +530,8 @@ Most recent full local test pass: **2026-10-29**.
 | Check | Result |
 | --- | --- |
 | Isolated installation and release build | Passed; 192 dependencies installed offline, .NET build with zero warnings/errors |
-| Full regression suite | **943 passed**, zero failures/skips; 29 test files |
-| Tool contracts | All 85 input Schemas compiled; tool names are unique and test-file discovery matches the configured suite |
+| Historical full regression suite (1.0.1) | **943 passed**, zero failures/skips; 29 test files |
+| Historical tool contracts (1.0.1) | All 85 input Schemas compiled; tool names are unique and test-file discovery matches the configured suite |
 | ZIP robustness | 256 deterministic truncated/mutated samples rejected as expected |
 | Real localhost HTTP | 10 checks passed, in addition to in-process handler regression tests |
 | Extracted stdio / CLI package | 14 startup checks passed on each of Node 24.18.0 and 24.22.1, without node_modules |
@@ -609,3 +611,43 @@ When changing a tool, update its Schema, implementation, regression tests, and d
 ## License
 
 [package.json](package.json) currently declares **MIT**, but the source directory does not yet contain the LICENSE text. Before a public open-source release, add the license file and confirm the licensing notices for included code and third-party dependencies.
+
+### Optional tool groups
+
+Set `D365_TOOLSETS` to a comma-separated selection of `query`, `data`, `config`, `deploy`, and `diagnostics` to limit both discovery and invocation. For example, `D365_TOOLSETS=query,config`. Omit it or set it to `all` to expose the default CRM tools; explicitly select `consultant` to enable the optional local module. Restart the server after changing it. Unknown group names fail startup.
+
+`edit_sitemap_xml` generates a local candidate SiteMap XML with group, subarea and Title-attribute edits. Use `set_localized_title` with `language_code` and `title` to update one localized label while preserving other languages. It does not save or publish. Review the XML, save with `update_existing_record`, and publish separately using `publish_sitemap`.
+
+`inspect_sitemap_applications` reads direct application associations for a SiteMap. Results reflect the current identity and do not establish complete dependencies, publication status, or browser behavior; preview publication separately using `publish_sitemap`.
+
+### Named environment profiles
+
+Set `D365_PROFILE=TEST` and provide settings such as `D365_PROFILE_TEST__AUTH_TYPE`, `D365_PROFILE_TEST__ORG_URL`, and the corresponding authentication settings. Every CRM setting uses the `D365_PROFILE_<NAME>__<SETTING>` prefix. Selected profiles do not inherit unprefixed settings or credentials from other profiles. Pass `environment_profile` on a tool call to choose a named profile; when omitted, the configured default applies. Connections and caches are isolated, with at most 16 profiles per process. Do not commit real credentials.
+
+`publish_appmodule` previews an AppModule publication; execution requires the preview hash and `allow_app_publish=true`. Acceptance does not verify app runtime or dependencies, and unknown outcomes are not retried.
+
+`save_sitemap_with_journal` backs up SiteMap XML before an ETag-guarded save; `rollback_sitemap_journal` previews and restores a verified version. Set absolute `D365_JOURNAL_DIR` and protect it: entries contain CRM XML. Neither action publishes. Rollback is blocked after changes and cannot be verified without a write-response ETag. This journal covers only saves through this tool.
+
+`update_record_with_journal` and `rollback_record_journal` support protected updates and limited restoration of scalar record fields. Bindings, creates and deletes are excluded. Journal entries contain original values; protect `D365_JOURNAL_DIR`. Other write tools do not automatically produce this journal.
+
+`list_change_journal` and `get_change_journal` show journal summaries for the current CRM identity and environment without disclosing backup values. Rollback eligibility must still be checked with a fresh preview.
+
+Set `D365_AUDIT_WRITES=true` and an absolute `D365_JOURNAL_DIR` to persist call-level events for CRM write-class tools before dispatch. Previews may also be recorded. Events omit arguments, field values and response bodies; `call_completed` only means that the tool returned, not that CRM changes were published or verified. Events are not rollback backups. If the journal cannot be created the call is blocked; if finalization fails after the call, inspect CRM before retrying. Offline tools are excluded.
+
+`plan_sitemap_publication` combines the SiteMap preview, directly associated applications, bounded native dependencies and individual application previews. Unavailable reads are reported as partial results. It performs no publication; submit and check each component separately.
+
+`backup_customization` captures saved/unpublished Web Resources, main forms and public system views; `restore_customization_backup` requires a fresh preview and native ETag and performs readback. Form and view restores require `solution_unique_name`. Neither publishes. Entries include original content: protect `D365_JOURNAL_DIR`. Restore requires supported ETags; managed Web Resources and other form/view types are excluded.
+
+Standard CRM note attachments support list, download, batch download, batch upload and batch delete. Upload and delete default to preview and require a current `planHash` to execute. Batch writes are sequential and stop on failure or unknown outcome; limits are 5 MiB per file and 20 MiB per upload batch. Existing local files are never overwritten. Delete requires native optimistic concurrency and specific ETags. Proprietary storage is excluded.
+
+Use `list_word_templates`, `download_word_template` and `change_word_template` for organization or personal CRM Word templates. Writes default to preview; create and update validate DOCX container structure, and update/delete require native optimistic concurrency. CRM acceptance does not verify template mappings or document generation.
+
+Use `list_crm_charts`, `get_crm_chart`, and `change_crm_chart` for system and personal charts. System chart writes require an unmanaged solution and do not publish automatically; separately preview `publish_model_table` and its table-wide scope. Updates and deletes require ETags. XML checks cover bounded structure, not full schema or runtime behavior.
+
+`update_crm_user_profile` previews and updates selected profile fields or enabled status using an ETag; status changes require acknowledgement. `manage_security_role` previews and creates, updates or deletes an unmanaged role without changing its privileges. `create_onprem_domain_user` previews and creates an on-premises AD/IFD domain user. `manage_user_roles` previews and verifies direct role assignments/removals; `list_role_privileges` reads direct privilege IDs and depth masks; `change_role_privilege` previews and adds or removes one direct privilege when current CSDL supports the operation. Changing depth requires separate removal and addition and is not atomic. Role associations cannot be atomically locked and require explicit unprotected-write acknowledgement; cross-business-unit changes also require acknowledgement and native CRM support. Direct roles do not prove effective record permissions.
+
+### Optional consultant workspace
+
+Explicitly select `D365_TOOLSETS=consultant` or combine it with other groups, e.g. `query,consultant`; default `all` excludes this module. Set `D365_CONSULTANT_DIR` to an existing absolute local directory and protect it as it can contain customer material. The module works locally without connecting to CRM or uploading content.
+
+`manage_consultant_project` supports `create_project`, `import_material`, `list_assets`, `generate_document`, `generate_uat`, `generate_prototype`, `compare_document_versions`, and `restore_asset`. Generated DOCX, XLSX and offline HTML are versioned as new files; restore never overwrites an old asset. For a document, pass `spec` with `title` and `sections` (`heading`, `body`). For UAT, pass `cases` requiring `id`, `scenario`, and `expected`; optional fields are `preconditions`, `steps`, `actual`, `status`, and `tester`. For a prototype, pass `title`, optional `description`, and `fields` (`label`, `type`, `placeholder`); alternatively use `pages` containing a title and fields per page. Prototypes are offline demonstrations and do not write to CRM.

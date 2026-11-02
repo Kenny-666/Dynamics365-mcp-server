@@ -149,6 +149,43 @@ export class WebResourceService {
     return this.finish(operation, createdId, publish, {name});
   }
 
+  /** Read the saved definition including unpublished content for a local backup. */
+  async getBackup(raw:unknown, signal?:AbortSignal) {
+    const a=input(raw,['id']),resourceId=id(a.id);
+    const result=await this.client.requestWithResponse<Resource>(`/webresourceset(${resourceId})/Microsoft.Dynamics.CRM.RetrieveUnpublished()?$select=${SELECT},content`,'GET',undefined,{signal,headers:{'Cache-Control':'no-cache'}});
+    const row=result.data;
+    if(result.status!==200 || !row || id(row.webresourceid)!==resourceId || typeof row.content!=='string' || typeof row.ismanaged!=='boolean' || typeof row.name!=='string' || typeof row.webresourcetype!=='number') this.badResponse('The saved Web Resource definition is incomplete.');
+    const content=this.base64(row.content as string).toString('base64'),version=etag((row['@odata.etag'] ?? result.headers.etag) as string | undefined);
+    if(row.displayname!=null && typeof row.displayname!=='string' || row.description!=null && typeof row.description!=='string') this.badResponse('The saved Web Resource labels are invalid.');
+    const data={content,displayname:row.displayname??null,description:row.description??null};
+    return {id:resourceId,name:row.name,resourceType:row.webresourcetype,isManaged:row.ismanaged,etag:version??null,data,definitionHash:createHash('sha256').update(JSON.stringify({resourceId,name:row.name,type:row.webresourcetype,isManaged:row.ismanaged,data})).digest('hex')};
+  }
+
+  /** Restore a captured definition with a metadata-confirmed specific ETag. Never publishes. */
+  async restoreBackup(raw:unknown,signal?:AbortSignal) {
+    const a=input(raw,['id','data','dry_run','expected_hash','if_match']),resourceId=id(a.id),dry=flag(a.dry_run,'dry_run',true),match=etag(a.if_match);
+    if(!a.data || typeof a.data!=='object' || Array.isArray(a.data)) invalid('data must be a captured Web Resource definition.');
+    const data=a.data as Resource;
+    if(Object.keys(data).length!==3 || Object.keys(data).some(k=>!['content','displayname','description'].includes(k)) || typeof data.content!=='string' || data.displayname!==null && typeof data.displayname!=='string' || data.description!==null && typeof data.description!=='string') invalid('The captured Web Resource fields are invalid.');
+    const normalized={content:this.base64(data.content as string).toString('base64'),displayname:data.displayname,description:data.description};
+    const before=await this.getBackup({id:resourceId},signal);
+    if(before.isManaged) throw new CrmRequestError('D365_WEBRESOURCE_RESTORE_MANAGED','Restore requires an unmanaged Web Resource.',{outcome:'not_sent'});
+    if(a.expected_hash!==undefined && a.expected_hash!==before.definitionHash) throw new CrmRequestError('D365_CONCURRENCY_CONFLICT','The Web Resource changed since preview.',{outcome:'not_sent'});
+    if(match && match!==before.etag) throw new CrmRequestError('D365_CONCURRENCY_CONFLICT','The Web Resource ETag changed since preview.',{outcome:'not_sent'});
+    const meta=await this.client.makeRequest<Resource>("/EntityDefinitions(LogicalName='webresource')?$select=LogicalName,IsOptimisticConcurrencyEnabled",'GET',undefined,{signal});
+    if(meta?.LogicalName!=='webresource' || meta.IsOptimisticConcurrencyEnabled!==true || !before.etag) throw new CrmRequestError('D365_WEBRESOURCE_RESTORE_CONCURRENCY_UNSUPPORTED','Native optimistic concurrency and a specific ETag are required.',{outcome:'not_sent'});
+    const restoreHash=createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
+    const state={id:resourceId,definitionHash:before.definitionHash,etag:before.etag,restoreHash,concurrencyProtected:true,publication:'not_requested'};
+    if(dry)return {...state,dryRun:true,saved:false};
+    if(!a.expected_hash || !match) throw new CrmRequestError('D365_WEBRESOURCE_PREVIEW_REQUIRED','Restore requires a current preview hash and ETag.',{outcome:'not_sent'});
+    let response;
+    try{response=await this.client.requestWithResponse(`/webresourceset(${resourceId})`,'PATCH',normalized,{headers:{'If-Match':match},signal});}
+    catch(error){const details=error instanceof CrmRequestError?error.details:{};throw new CrmRequestError('D365_WEBRESOURCE_RESTORE_FAILED','Restore failed or has an unknown outcome; do not automatically retry.',{outcome:details.outcome??'unknown',status:details.status,retryable:false});}
+    if(![200,204].includes(response.status)) throw new CrmRequestError('D365_WEBRESOURCE_RESTORE_FAILED','Restore did not return a confirmed success.',{outcome:'unknown',retryable:false,status:response.status});
+    try{const after=await this.getBackup({id:resourceId},signal);if(JSON.stringify(after.data)!==JSON.stringify(normalized))throw new Error('readback mismatch');return {...state,dryRun:false,saved:true,readback:{status:'matched',definitionHash:after.definitionHash,etag:after.etag}};}
+    catch{throw new WebResourcePhaseError('D365_WEBRESOURCE_RESTORE_READBACK_FAILED','Restore was accepted but could not be verified. Do not repeat the write.','restoreWebResource',{...state,saved:true},{outcome:'unknown',retryable:false});}
+  }
+
   async update(raw: unknown) {
     const args = input(raw, ['id', 'file_path', 'content', 'content_encoding', 'display_name', 'description', 'publish', 'dry_run', 'if_match']);
     const resourceId = id(args.id);

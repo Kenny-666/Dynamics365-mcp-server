@@ -67,6 +67,33 @@ export class ModelUiService extends ModelMetadataService {
       source:'native_saved_including_unpublished',publication:'not_determined',definitionHash:component.definitionHash,etag:component.etag ?? null,xml:component.source,
       structure:k === 'form' ? formSummary(component.source.formxml) : viewSummary(component.source.fetchxml,component.source.layoutxml,tableName)};
   }
+  /** Restore a captured saved definition using the same native scope and ETag checks as edits. */
+  async restoreBackup(raw:unknown,signal?:AbortSignal):Promise<Row> {
+    const a=args(raw,['kind','id','logical_name','solution_unique_name','xml','dry_run','expected_hash','if_match']);
+    const k=kind(a.kind),id=guid(a.id),tableName=logical(a.logical_name,'logical_name'),dry=flag(a.dry_run,'dry_run',true),match=etag(a.if_match);
+    const table=await this.tableMetadata(tableName,signal),before=await this.component(k,id,table,signal),c=CONFIG[k];
+    allowed(table,'IsCustomizable');
+    if(before.row.iscustomizable?.Value!==true) fail('MANAGED_PROPERTY','The UI component is not explicitly customizable.');
+    if(k==='form' && before.row.type!==2 || k==='view' && before.row.querytype!==0) fail('UNSUPPORTED','Restore supports Main forms and public system views only.');
+    if(!a.xml || typeof a.xml!=='object' || Array.isArray(a.xml) || Object.keys(a.xml).length!==c.xml.length || Object.keys(a.xml).some(field=>!c.xml.includes(field))) fail('INVALID','The snapshot XML fields do not match the component kind.');
+    const source:Row={};for(const field of c.xml){uiXml(a.xml[field],field==='formxml'?'form':field==='fetchxml'?'fetch':'grid');source[field]=a.xml[field];}
+    const restoreHash=hash(Object.fromEntries(c.xml.map(field=>[field,xmlHash(source[field],field==='formxml'?'form':field==='fetchxml'?'fetch':'grid')])));
+    if(a.expected_hash!==undefined && a.expected_hash!==before.definitionHash) fail('CONFLICT','The current UI definition changed since the preview.');
+    const solution=await this.solution(a.solution_unique_name,signal);
+    const metadata=definition(await this.read(tablePath(c.table),signal));this.identity(metadata,c.table);
+    if(metadata.IsOptimisticConcurrencyEnabled!==true || !before.etag) fail('UI_CONCURRENCY_UNSUPPORTED','A native specific ETag and optimistic concurrency are required for restore.');
+    if(match && match!==before.etag) fail('CONFLICT','The UI component ETag changed since the preview.');
+    const state={id,kind:k,logicalName:tableName,definitionHash:before.definitionHash,etag:before.etag,restoreHash,solution,concurrencyProtected:true,publication:'not_requested'};
+    if(dry) return {...state,dryRun:true,saved:false};
+    if(!a.expected_hash || !match) fail('PREVIEW_REQUIRED','Restore requires the current definition hash and specific ETag from the preview.');
+    await this.write(before.path,'PATCH',source,{'MSCRM.SolutionUniqueName':solution.uniqueName,'If-Match':match},state,signal);
+    try {
+      const after=await this.component(k,id,table,signal);
+      const mismatches=c.xml.filter(field=>xmlHash(after.source[field],field==='formxml'?'form':field==='fetchxml'?'fetch':'grid')!==xmlHash(source[field],field==='formxml'?'form':field==='fetchxml'?'fetch':'grid'));
+      if(mismatches.length) throw new Error('readback mismatch');
+      return {...state,dryRun:false,saved:true,readback:{status:'matched',definitionHash:after.definitionHash,etag:after.etag??null}};
+    } catch {throw new ModelMetadataError('D365_MODEL_RESTORE_READBACK_FAILED','Restore was accepted but could not be verified. Do not repeat the write.',{...state,saved:true},{outcome:'unknown',retryable:false});}
+  }
   private resolver(table:string,signal?:AbortSignal):UiResolver {
     const fields = new Map<string,Promise<Row>>(),libraries = new Map<string,Promise<{id:string;name:string}>>();
     return {

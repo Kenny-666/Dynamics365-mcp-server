@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {DOMParser} from '@xmldom/xmldom';
+import {inspectArchive} from '../src/services/solutionPackage.ts';
+import {implementationDocx,uatWorkbook,prototypeHtml} from '../src/services/consultantArtifacts.ts';
+function extract(bytes,name){return inspectArchive(bytes,{[name]:4*1024*1024}).payloads.get(name).toString('utf8');}
+function xml(source){return new DOMParser({onError:()=>{throw Error('invalid XML');}}).parseFromString(source,'application/xml');}
+test('implementation DOCX is valid editable XML and escapes document content',()=>{const b=implementationDocx({title:'实施方案 & 范围',sections:[{heading:'需求',body:'第一行\n第二行 <验证>'}]});const source=extract(b,'word/document.xml');assert.equal(xml(source).documentElement.localName,'document');assert.match(source,/实施方案 &amp; 范围/);assert.match(source,/第二行 &lt;验证&gt;/);assert.ok(inspectArchive(b).entries.some(x=>x.name==='word/styles.xml'));});
+test('UAT workbook stores user data as inline text, including formula-like values',()=>{const b=uatWorkbook({cases:[{id:'U01',scenario:'=1+1',steps:'测试',expected:'成功'}]});const source=extract(b,'xl/worksheets/sheet1.xml');assert.equal(xml(source).documentElement.localName,'worksheet');assert.match(source,/t="inlineStr"/);assert.match(source,/>=1\+1</);assert.doesNotMatch(source,/<f>/);assert.match(source,/state="frozen"/);});
+test('prototype escapes markup and contains no scripts or external assets',()=>{const output=prototypeHtml({title:'<img src=x>',description:'预览',fields:[{label:'客户 & 名称',type:'text',placeholder:'<请输入>'}]}).toString();assert.ok(output.includes('&lt;img src=x&gt;'));assert.ok(output.includes('客户 &amp; 名称'));assert.doesNotMatch(output,/<script|https?:\/\//i);});
+test('multi-page prototype links independent accessible form sections without external resources',()=>{const output=prototypeHtml({title:'业务系统',pages:[{title:'客户',fields:[{label:'客户名称'}]},{title:'订单',fields:[{label:'金额',type:'number'}]}]}).toString();assert.match(output,/href="#page0"/);assert.match(output,/href="#page1"/);assert.match(output,/id="page1"/);assert.match(output,/for="p1f0"/);assert.doesNotMatch(output,/<script|https?:\/\//i);});
+test('UAT permits blank optional execution fields while requiring useful case details',()=>{assert.doesNotThrow(()=>uatWorkbook({cases:[{id:'T1',scenario:'Create',expected:'Success',actual:'',status:'',tester:''}]}));assert.throws(()=>uatWorkbook({cases:[{id:'T1',expected:'Success'}]}),/scenario/);});

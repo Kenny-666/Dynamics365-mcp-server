@@ -1,3 +1,25 @@
+import { UserUpdateService } from './services/userUpdate.js';
+import { RolePrivilegeService } from './services/rolePrivilege.js';
+import { RoleDefinitionService } from './services/roleDefinition.js';
+import { consultantProject } from './services/consultantProject.js';
+import { UserProvisionService } from './services/userProvision.js';
+import { RoleAssignmentService } from './services/roleAssignment.js';
+import { ChartService } from './services/chart.js';
+import { chartTools } from './tools/chartTools.js';
+import { WordTemplateService } from './services/wordTemplate.js';
+import { wordTemplateTools } from './tools/wordTemplateTools.js';
+import { AttachmentService } from './services/attachment.js';
+import { attachmentTools } from './tools/attachmentTools.js';
+import { CustomizationBackupService } from './services/customizationBackup.js';
+import { planSiteMapPublication } from './services/siteMapPlan.js';
+import { ToolAuditService } from './services/toolAudit.js';
+import { JournalCatalogService } from './services/journalCatalog.js';
+import { RecordJournalService } from './services/recordJournal.js';
+import { SiteMapJournalService } from './services/siteMapJournal.js';
+import { AppPublicationService } from './services/appPublication.js';
+import { inspectSiteMapApplications } from './services/siteMapApplications.js';
+import { editSiteMap } from './services/siteMapEditor.js';
+import { ConfigInspectionService } from './services/configInspection.js';
 import dotenv from 'dotenv';
 import { D365AuthService } from './services/d365Auth.js';
 import { CacheService } from './services/cache.js';
@@ -62,19 +84,36 @@ export function checkConfig() {
   validateConfig(readConfig());
 }
 
-function createServices() {
-  const config = readConfig();
+function createServices(profile?:string) {
+  const config = readConfig(profile === undefined ? process.env : {...process.env,D365_PROFILE:profile});
   validateConfig(config);
-  const cache = CacheService.getInstance(config.cacheTtl);
-  const auth = new D365AuthService(config);
+  const cache = CacheService.createIsolated(config.cacheTtl);
+  const auth = new D365AuthService(config,{cache});
   const recordMutationService = new RecordMutationService(auth,{orgUrl:config.orgUrl || config.environmentUrl,
     authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'});
   const pluginStepService = new PluginStepService(auth,{orgUrl:config.orgUrl || config.environmentUrl,
     authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'});
   const diagnosticService = new DiagnosticService(auth,{orgUrl:config.orgUrl || config.environmentUrl,
     authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'},pluginStepService);
+  const apiOperationService=new ApiOperationService(auth,{orgUrl:config.orgUrl || config.environmentUrl,authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'});
+  const modelUiService=new ModelUiService(auth,{orgUrl:config.orgUrl || config.environmentUrl,authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'});
+  const webResourceService=new WebResourceService(auth,{orgUrl:config.orgUrl || config.environmentUrl,authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'});
   return {
     auth,
+    userUpdateService:new UserUpdateService(auth,recordMutationService,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
+    rolePrivilegeService:new RolePrivilegeService(auth,apiOperationService,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
+    roleDefinitionService:new RoleDefinitionService(auth,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
+    userProvisionService:new UserProvisionService(auth,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2',authType:config.authType || 'online'}),
+    roleAssignmentService:new RoleAssignmentService(auth,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
+    chartService:new ChartService(auth,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
+    wordTemplateService:new WordTemplateService(auth,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
+    attachmentService:new AttachmentService(auth,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
+    customizationBackupService:new CustomizationBackupService(auth,modelUiService,webResourceService,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
+    toolAuditService:new ToolAuditService(auth,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
+    journalCatalogService:new JournalCatalogService(auth,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
+    recordJournalService:new RecordJournalService(auth,recordMutationService,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
+    siteMapJournalService:new SiteMapJournalService(auth,recordMutationService,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
+    appPublicationService:new AppPublicationService(auth,{orgUrl:config.orgUrl || config.environmentUrl,authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'}),
     siteMapPublicationService:new SiteMapPublicationService(auth,{orgUrl:config.orgUrl || config.environmentUrl,
       authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'}),
     ribbonDeploymentService:new RibbonDeploymentService(auth,{orgUrl:config.orgUrl || config.environmentUrl,
@@ -91,9 +130,9 @@ function createServices() {
       authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'}),
     solutionService:new SolutionService(auth,{orgUrl:config.orgUrl || config.environmentUrl,
       authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'}),
-    apiOperationService:new ApiOperationService(auth,{orgUrl:config.orgUrl || config.environmentUrl,
-      authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'}),
+    apiOperationService,
     entitySchemaService: new EntitySchemaService(auth, cache),
+    configInspectionService: new ConfigInspectionService(auth),
     optionSetService: new OptionSetService(auth, cache),
     relationshipService: new RelationshipService(auth, cache),
     fetchXmlService: new FetchXmlService(auth),
@@ -110,13 +149,11 @@ function createServices() {
       authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'}),
     modelChoiceService:new ModelChoiceService(auth,{orgUrl:config.orgUrl || config.environmentUrl,
       authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'}),
-    modelUiService:new ModelUiService(auth,{orgUrl:config.orgUrl || config.environmentUrl,
-      authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'}),
+    modelUiService,
     securityEvidenceService:new SecurityEvidenceService(auth),
     auditEvidenceService:new AuditEvidenceService(auth,diagnosticService),
     environmentService: new EnvironmentService(auth, config),
-    webResourceService: new WebResourceService(auth, {orgUrl:config.orgUrl || config.environmentUrl,
-      authType:config.authType || 'online', apiVersion:config.apiVersion || 'v9.2'}),
+    webResourceService,
     pluginStepService,
     pluginAssemblyService:new PluginAssemblyService(auth,{orgUrl:config.orgUrl || config.environmentUrl,
       authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'}),
@@ -125,7 +162,7 @@ function createServices() {
   };
 }
 
-let services: ReturnType<typeof createServices> | undefined;
+const servicePool = new Map<string, ReturnType<typeof createServices>>();
 
 const stateProperties = {
   state_mode:{type:'string', enum:['legacy','all','values'], description:'legacy preserves valid implicit statecode=0 filtering; all adds no state filter; values uses state_values validated against this table.'},
@@ -145,7 +182,29 @@ function queryInput(args: any): QueryOptions {
     fetch_all:args.fetch_all, continuation:args.continuation};
 }
 
-export const tools = [
+// Individual tool modules define their schemas independently; contract tests compile every schema.
+type RegisteredTool = {name:string; description?:string; inputSchema:any; annotations?:{readOnlyHint?:boolean;destructiveHint?:boolean;idempotentHint?:boolean;openWorldHint?:boolean}};
+export const tools:RegisteredTool[] = [
+  {name:'update_crm_user_profile',description:'Preview then update selected CRM user profile fields or enabled status with metadata-confirmed ETag and readback. Changing isdisabled requires explicit acknowledgement; roles, business unit, domain and passwords are excluded.',inputSchema:{type:'object',additionalProperties:false,required:['user_id','changes'],properties:{user_id:{type:'string'},changes:{type:'object',additionalProperties:false,minProperties:1,properties:{firstname:{type:['string','null']},lastname:{type:'string'},internalemailaddress:{type:['string','null']},title:{type:['string','null']},telephone1:{type:['string','null']},mobilephone:{type:['string','null']},isdisabled:{type:'boolean'}}},dry_run:{type:'boolean'},expected_hash:{type:'string',pattern:'^[a-f0-9]{64}$'},allow_access_change:{type:'boolean'}}},annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},
+  {name:'change_role_privilege',description:'Preview then add or remove one native role privilege with an explicitly supported depth. Uses current CSDL, rereads the role privilege, requires both acknowledgements and does not infer effective access. Existing different depths must be removed separately.',inputSchema:{type:'object',additionalProperties:false,required:['role_id','privilege_id','action'],properties:{role_id:{type:'string'},privilege_id:{type:'string'},action:{enum:['add','remove']},depth:{enum:['Basic','Local','Deep','Global']},dry_run:{type:'boolean'},expected_hash:{type:'string',pattern:'^[a-f0-9]{64}$'},allow_unprotected_write:{type:'boolean'},allow_role_privilege_change:{type:'boolean'}}},annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},
+  {name:'manage_security_role',description:'Preview then create, rename/update, or delete a customizable unmanaged security role in an explicit unmanaged solution. Update/delete require native optimistic concurrency and specific ETag; no privilege changes are performed.',inputSchema:{type:'object',additionalProperties:false,required:['action','solution_unique_name'],properties:{action:{enum:['create','update','delete']},id:{type:'string'},business_unit_id:{type:'string'},name:{type:'string'},description:{type:'string'},solution_unique_name:{type:'string'},dry_run:{type:'boolean'},expected_hash:{type:'string',pattern:'^[a-f0-9]{64}$'},allow_role_change:{type:'boolean'}}},annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},
+  {name:'manage_consultant_project',description:'Optional local consultant workspace: create projects, import material, generate editable DOCX and UAT XLSX or offline HTML prototypes, list assets, compare document versions and restore a generated version. Requires existing D365_CONSULTANT_DIR. No CRM connection or external upload.',inputSchema:{type:'object',additionalProperties:false,required:['action','project_id'],properties:{action:{enum:['create_project','list_assets','import_material','generate_document','generate_uat','generate_prototype','compare_document_versions','restore_asset']},project_id:{type:'string'},name:{type:'string'},title:{type:'string'},file_path:{type:'string'},spec:{type:'object'},asset_id:{type:'string'},from_asset_id:{type:'string'},to_asset_id:{type:'string'}}},annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false}},
+  {name:'list_role_privileges',description:'Read bounded direct native privilege IDs and depth masks for a security role. Does not infer effective user or record access.',inputSchema:{type:'object',additionalProperties:false,required:['role_id'],properties:{role_id:{type:'string'},top:{type:'integer',minimum:1,maximum:100},max_pages:{type:'integer',minimum:1,maximum:20}}},annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true}},
+  {name:'create_onprem_domain_user',description:'Preview then create a CRM on-premises AD/IFD domain user in a verified active business unit. No passwords or roles are set. Requires preview hash and explicit creation acknowledgement; unknown writes are never retried.',inputSchema:{type:'object',additionalProperties:false,required:['domain_name','business_unit_id','last_name'],properties:{domain_name:{type:'string'},business_unit_id:{type:'string'},last_name:{type:'string'},first_name:{type:'string'},dry_run:{type:'boolean'},expected_hash:{type:'string',pattern:'^[a-f0-9]{64}$'},allow_user_creation:{type:'boolean'}}},annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},
+  {name:'manage_user_roles',description:'Preview then assign or remove up to 20 direct user security roles. Resolves native relationship and business units, requires unprotected-write acknowledgement, and verifies each membership after dispatch. No automatic retries; effective privileges are not inferred.',inputSchema:{type:'object',additionalProperties:false,required:['user_id','role_ids','action'],properties:{user_id:{type:'string'},role_ids:{type:'array',minItems:1,maxItems:20,uniqueItems:true,items:{type:'string'}},action:{enum:['assign','remove']},dry_run:{type:'boolean'},expected_hash:{type:'string',pattern:'^[a-f0-9]{64}$'},allow_unprotected_write:{type:'boolean'},allow_cross_business_unit:{type:'boolean'}}},annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},
+  ...chartTools,
+  ...wordTemplateTools,
+  ...attachmentTools,
+  {name:'backup_customization',description:'Preview and persist a saved/unpublished Web Resource, main form or public view backup. Requires D365_JOURNAL_DIR. Does not publish.',inputSchema:{type:'object',additionalProperties:false,required:['kind','id'],properties:{kind:{enum:['webresource','form','view']},id:{type:'string'},logical_name:{type:'string'},dry_run:{type:'boolean'},expected_hash:{type:'string',pattern:'^[a-f0-9]{64}$'}}},annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false}},
+  {name:'restore_customization_backup',description:'Preview and restore an eligible saved customization backup with native ETag checks and readback; never publishes.',inputSchema:{type:'object',additionalProperties:false,required:['journal_id'],properties:{journal_id:{type:'string'},solution_unique_name:{type:'string'},dry_run:{type:'boolean'},expected_hash:{type:'string',pattern:'^[a-f0-9]{64}$'}}},annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},
+  {name:'list_change_journal',description:'List recognized persistent journal entries for the active CRM identity and environment without returning original values.',inputSchema:{type:'object',additionalProperties:false,properties:{limit:{type:'integer',minimum:1,maximum:100},offset:{type:'integer',minimum:0,maximum:2000}}},annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true}},
+  {name:'get_change_journal',description:'Get a safe summary of one journal entry for the active identity and environment; does not return original values.',inputSchema:{type:'object',additionalProperties:false,required:['journal_id'],properties:{journal_id:{type:'string'}}},annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true}},
+  {name:'update_record_with_journal',description:'Preview and conditionally update simple record fields with a persistent before-image. Requires D365_JOURNAL_DIR and native optimistic concurrency.',inputSchema:{type:'object',additionalProperties:false,required:['collection_name','id','data'],properties:{collection_name:{type:'string'},id:{type:'string'},data:{type:'object',minProperties:1,maxProperties:20,additionalProperties:{type:['string','number','boolean','null']}},dry_run:{type:'boolean'},expected_hash:{type:'string',pattern:'^[a-f0-9]{64}$'}}},annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},
+  {name:'rollback_record_journal',description:'Preview or conditionally restore a verified record-update journal entry; rejects changed records.',inputSchema:{type:'object',additionalProperties:false,required:['journal_id'],properties:{journal_id:{type:'string'},dry_run:{type:'boolean'},expected_hash:{type:'string',pattern:'^[a-f0-9]{64}$'}}},annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},
+  {name:'resolve_model_name', description:'Resolve an exact logical, schema, collection or localized display name. Ambiguous names return candidates.',
+    inputSchema:{type:'object',additionalProperties:false,required:['name'],properties:{name:{type:'string'},entity_logical_name:{type:'string',description:'When present resolve a column in this table; otherwise resolve a table.'}}}},
+  {name:'check_model_configuration', description:'Read-only checks for main forms, required fields and public view XML. Results depend on CRM permissions and cannot evaluate all runtime rules.',
+    inputSchema:{type:'object',additionalProperties:false,required:['entity_logical_name'],properties:{entity_logical_name:{type:'string'}}}},
   ...siteMapTools,
   ...solutionTools,
   ...solutionTransferTools,
@@ -313,8 +372,37 @@ export const tools = [
   },
 ];
 
-export async function handleToolCall(name: string, args: any = {}, context:MutationContext = {}) {
+/** Select exposed tools without changing the default full inventory. */
+export function selectTools(setting = process.env.D365_TOOLSETS ?? 'all') {
+  const groups: Record<string, string[]> = {
+    query: ['list_role_privileges','resolve_model_name','get_environment_capabilities','get_entity_metadata_summary','get_field_picklist_options',
+      'get_entity_navigation_links','preview_fetchxml_query','query_by_fetchxml','get_current_user_context',
+      'list_all_entity_definitions','search_records_by_odata','get_record_by_id','get_detailed_field_metadata',
+      ...evidenceTools.map(t => t.name)],
+    data: ['update_crm_user_profile','change_role_privilege','manage_security_role','create_onprem_domain_user','manage_user_roles',...attachmentTools.map(t => t.name),...recordMutationTools.map(t => t.name),'update_record_with_journal','rollback_record_journal'],
+    config: [...chartTools.map(t => t.name),'backup_customization','restore_customization_backup','check_model_configuration', ...[...modelMaintenanceTools,...modelUiTools,...modelChoiceTools,...modelStructureTools,
+      ...modelMetadataTools,...siteMapTools].map(t => t.name)],
+    deploy: [...wordTemplateTools,...solutionTools,...solutionTransferTools,...solutionVerificationTools,...ribbonTools,
+      ...ribbonDeploymentTools,...pluginAssemblyTools,...pluginImageTools,...webResourceTools,
+      ...pluginStepTools,...apiOperationTools].map(t => t.name),
+    consultant: ['manage_consultant_project'],
+    diagnostics: ['list_change_journal','get_change_journal','clear_server_cache', ...evidenceTools.map(t => t.name)],
+  };
+  const requested = setting.split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+  if (!requested.length || requested.includes('all')) {
+    if (requested.some(x => x !== 'all')) throw new Error('D365_TOOLSETS: all cannot be combined with groups');
+    return tools.filter(tool => tool.name !== 'manage_consultant_project');
+  }
+  const invalid = requested.filter(x => !Object.hasOwn(groups, x));
+  if (invalid.length) throw new Error(`D365_TOOLSETS: unknown groups: ${invalid.join(', ')}`);
+  const names = new Set(requested.flatMap(x => groups[x]));
+  return tools.filter(t => names.has(t.name));
+}
+
+export async function handleToolCall(name: string, args: any = {}, context:MutationContext & {environmentProfile?:string} = {}) {
   if (!tools.some(tool => tool.name === name)) throw new Error(`Unknown tool: ${name}`);
+  if (name === 'manage_consultant_project') return consultantProject(args);
+  if (name === 'edit_sitemap_xml') return editSiteMap(args);
   if (name === 'd365_plugin_assembly_inspect') return inspectPluginAssembly(args,context.signal);
   if (name === 'inspect_solution_package') return inspectSolutionPackage(args,context.signal);
   if (name === 'compare_solution_snapshots') return compareSolutionSnapshots(args,context.signal);
@@ -322,10 +410,61 @@ export async function handleToolCall(name: string, args: any = {}, context:Mutat
   if (name === 'edit_ribbon_solution') return editRibbonSolution(args,context.signal);
   if (name === 'clear_server_cache') {
     CacheService.flushExisting();
-    if (services) clearQueryContinuations(services.auth);
+    for (const service of servicePool.values()) clearQueryContinuations(service.auth);
     return { success: true, message: 'Server cache cleared' };
   }
-  services ??= createServices();
+  const profile = context.environmentProfile;
+  if (profile !== undefined && !/^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(profile)) throw new Error('Invalid environment_profile');
+  const poolKey = profile?.toUpperCase() ?? (process.env.D365_PROFILE?.trim().toUpperCase() || '');
+  let services = servicePool.get(poolKey);
+  if (!services) {
+    if (servicePool.size >= 16) throw new Error('At most 16 environment profiles may be active per process');
+    services = createServices(profile);
+    servicePool.set(poolKey,services);
+  }
+  const selected = tools.find(tool => tool.name === name);
+  const annotations = selected && 'annotations' in selected ? selected.annotations : undefined;
+  if (process.env.D365_AUDIT_WRITES === 'true' && annotations?.readOnlyHint === false) {
+    return services.toolAuditService.run(name,() => dispatchCrmTool(name,args,context,services!),context.signal);
+  }
+  return dispatchCrmTool(name,args,context,services);
+}
+
+async function dispatchCrmTool(name:string,args:any,context:MutationContext,services:ReturnType<typeof createServices>) {
+  if (name === 'resolve_model_name') return services.configInspectionService.resolve(args,context.signal);
+  if (name === 'check_model_configuration') return services.configInspectionService.check(args,context.signal);
+  if (name === 'plan_sitemap_publication') return planSiteMapPublication(args,{
+    publishSiteMap:(a,signal)=>services.siteMapPublicationService.publish(a,signal),
+    inspectApplications:(a,signal)=>inspectSiteMapApplications(services.auth,a,signal),
+    publishApp:(a,signal)=>services.appPublicationService.publish(a,signal),
+    dependencies:(a,signal)=>services.solutionService.getDependencies(a,signal),
+  },context.signal);
+  if (name === 'inspect_sitemap_applications') return inspectSiteMapApplications(services.auth,args,context.signal);
+  if (name === 'update_crm_user_profile') return services.userUpdateService.execute(args,context.signal);
+  if (name === 'change_role_privilege') return services.rolePrivilegeService.execute(args,context.signal);
+  if (name === 'manage_security_role') return services.roleDefinitionService.execute(args,context.signal);
+  if (name === 'create_onprem_domain_user') return services.userProvisionService.create(args,context.signal);
+  if (name === 'manage_user_roles') return services.roleAssignmentService.execute(args,context.signal);
+  if (name === 'list_crm_charts') return services.chartService.list(args,context.signal);
+  if (name === 'get_crm_chart') return services.chartService.get(args,context.signal);
+  if (name === 'change_crm_chart') return services.chartService.mutate(args,context.signal);
+  if (name === 'list_word_templates') return services.wordTemplateService.list(args,context.signal);
+  if (name === 'download_word_template') return services.wordTemplateService.download(args,context.signal);
+  if (name === 'change_word_template') return services.wordTemplateService.mutate(args,context.signal);
+  if (name === 'list_note_attachments') return services.attachmentService.list(args,context.signal);
+  if (name === 'download_note_attachment') return services.attachmentService.download(args,context.signal);
+  if (name === 'download_note_attachments') return services.attachmentService.downloadBatch(args,context.signal);
+  if (name === 'delete_note_attachments') return services.attachmentService.removeBatch(args,context.signal);
+  if (name === 'upload_note_attachments') return services.attachmentService.upload(args,context.signal);
+  if (name === 'backup_customization') return services.customizationBackupService.capture(args,context.signal);
+  if (name === 'restore_customization_backup') return services.customizationBackupService.restore(args,context.signal);
+  if (name === 'list_change_journal') return services.journalCatalogService.list(args,context.signal);
+  if (name === 'get_change_journal') return services.journalCatalogService.get(args,context.signal);
+  if (name === 'update_record_with_journal') return services.recordJournalService.save(args,context.signal);
+  if (name === 'rollback_record_journal') return services.recordJournalService.rollback(args,context.signal);
+  if (name === 'save_sitemap_with_journal') return services.siteMapJournalService.save(args,context.signal);
+  if (name === 'rollback_sitemap_journal') return services.siteMapJournalService.rollback(args,context.signal);
+  if (name === 'publish_appmodule') return services.appPublicationService.publish(args,context.signal);
   if (name === 'publish_sitemap') return services.siteMapPublicationService.publish(args,context.signal);
   const { entitySchemaService, optionSetService, relationshipService,
     fetchXmlService, metadataService, recordService, environmentService, webResourceService, pluginStepService,
@@ -376,6 +515,7 @@ export async function handleToolCall(name: string, args: any = {}, context:Mutat
     case 'query_plugin_trace_logs': return diagnosticService.traceLogs(args,context.signal);
     case 'query_failed_system_jobs': return diagnosticService.failedJobs(args,context.signal);
     case 'diagnose_plugin_failure': return diagnosticService.diagnose(args,context.signal);
+    case 'list_role_privileges': return securityEvidenceService.privileges(args,context.signal);
     case 'query_security_principals': return securityEvidenceService.principals(args,context.signal);
     case 'get_principal_security_context': return securityEvidenceService.context(args,context.signal);
     case 'get_record_access': return securityEvidenceService.access(args,context.signal);

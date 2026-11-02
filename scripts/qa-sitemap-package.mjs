@@ -31,11 +31,11 @@ const client=new Client({name:'sitemap-package-qa',version:'1.0.0'},{capabilitie
 const transport=new StdioClientTransport({command:process.env.D365_SMOKE_NODE||process.execPath,args:[path.resolve(process.argv[2]||'dist/index.cjs')],cwd,env,stderr:'pipe'});transport.stderr?.on('data',()=>{});
 async function call(args){const result=await client.callTool({name:'publish_sitemap',arguments:args},undefined,{timeout:15000});return {result,data:JSON.parse(result.content.find(p=>p.type==='text').text)};}
 try{
- await client.connect(transport,{timeout:15000});assert.equal(client.getServerVersion().version,'1.0.1');assert.equal((await client.listTools()).tools.length,85);
+ await client.connect(transport,{timeout:15000});assert.equal(client.getServerVersion().version,'1.1.0');assert.equal((await client.listTools()).tools.length,116);
  const p=await call({id});assert.notEqual(p.result.isError,true);assert.equal(calls.some(c=>c.method==='POST'),false);
  const done=await call({id,dry_run:false,expected_hash:p.data.planHash,allow_sitemap_scope_publish:true});assert.notEqual(done.result.isError,true);assert.equal(done.data.publishedDefinitionVerified,true);assert.equal(saved,published);
  saved='<SiteMap><Area Id="AnotherChange"/></SiteMap>';ignorePublish=true;
  const retry=await call({id});const mismatch=await call({id,dry_run:false,expected_hash:retry.data.planHash,allow_sitemap_scope_publish:true});assert.equal(mismatch.result.isError,true);assert.equal(mismatch.data.code,'D365_SITEMAP_READBACK_MISMATCH');assert.equal(mismatch.data.data.publicationAccepted,true);assert.equal(mismatch.data.data.published,null);
  assert.equal(calls.filter(c=>c.method==='POST').length,2);assert.equal(calls.some(c=>c.path.includes('$metadata')||c.path.includes('PublishAllXml')),false);
- console.log(JSON.stringify({transport:'actual stdio package and local HTTP fake CRM',version:'1.0.1',tools:85,previewSubmittedNoWrites:true,publicationAndPublishedReadbackPassed:true,ineffectiveHttp204ReportedAsError:true,postRequests:2,csdlRequests:0,publishAllRequests:0,realCrmRequests:0},null,2));
+ console.log(JSON.stringify({transport:'actual stdio package and local HTTP fake CRM',version:'1.1.0',tools:116,previewSubmittedNoWrites:true,publicationAndPublishedReadbackPassed:true,ineffectiveHttp204ReportedAsError:true,postRequests:2,csdlRequests:0,publishAllRequests:0,realCrmRequests:0},null,2));
 }finally{await client.close().catch(()=>{});await new Promise(resolve=>server.close(resolve));await fs.rmdir(cwd).catch(()=>{});}

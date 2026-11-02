@@ -1,0 +1,10 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {UserUpdateService} from '../src/services/userUpdate.ts';
+import {CrmRequestError} from '../src/errors.ts';
+const user='11111111-1111-1111-1111-111111111111',actor='22222222-2222-2222-2222-222222222222',org='33333333-3333-3333-3333-333333333333';
+function fixture(failure=false){let data={systemuserid:user,firstname:'Old',isdisabled:false},version=1,writes=0;
+ const client={makeRequest:async()=>({UserId:actor,OrganizationId:org}),requestWithResponse:async()=>({status:200,data:{...data,'@odata.etag':`W/"${version}"`},headers:{}})};
+ const writer={execute:async(_op,a)=>{if(a.dry_run)return {canWrite:true,concurrencyProtected:true,changes:{}};writes++;if(failure)throw new CrmRequestError('TIMEOUT','secret',{outcome:'unknown'});assert.equal(a.if_match,`W/"${version}"`);data={...data,...a.data};version++;return {saved:true};}};
+ return {service:new UserUpdateService(client,writer,{orgUrl:'https://crm.invalid',apiVersion:'v9.1'}),writes:()=>writes};}
+test('profile and status changes require preview, status acknowledgement and ETag',async()=>{const f=fixture(),a={user_id:user,changes:{firstname:'New',isdisabled:true}},p=await f.service.execute(a);assert.equal(f.writes(),0);await assert.rejects(f.service.execute({...a,dry_run:false,expected_hash:p.planHash}),/allow_access_change/);const r=await f.service.execute({...a,dry_run:false,expected_hash:p.planHash,allow_access_change:true});assert.equal(r.verified,true);assert.equal(f.writes(),1);});
+test('security fields are rejected and unknown writes are not retried',async()=>{const f=fixture(true);await assert.rejects(f.service.execute({user_id:user,changes:{domainname:'new'}}),/supported profile fields/);const a={user_id:user,changes:{firstname:'New'}},p=await f.service.execute(a);await assert.rejects(f.service.execute({...a,dry_run:false,expected_hash:p.planHash}),e=>{assert.equal(e.details.outcome,'unknown');assert.ok(!JSON.stringify(e.toJSON()).includes('secret'));return true;});assert.equal(f.writes(),1);});

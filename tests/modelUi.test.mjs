@@ -334,3 +334,18 @@ test('XML semantic comparison ignores formatting/attribute order while preservin
   assert.notEqual(xmlHash('<fetch><entity><filter><condition><value> </value></condition></filter></entity></fetch>','fetch'),
     xmlHash('<fetch><entity><filter><condition><value></value></condition></filter></entity></fetch>','fetch'));
 });
+test('UI backup restore requires current ETag and verifies unpublished readback',async()=>{
+ const f=fixture(),snapshot=await f.service.getComponent({kind:'form',id:ids.form,logical_name:'new_sample'});
+ f.form.formxml=formXml.replace('name="general"','name="changed"');
+ const args={kind:'form',id:ids.form,logical_name:'new_sample',solution_unique_name:'TestSolution',xml:snapshot.xml};
+ const preview=await f.service.restoreBackup(args);assert.equal(preview.dryRun,true);assert.equal(writes(f).length,0);
+ const result=await f.service.restoreBackup({...args,dry_run:false,expected_hash:preview.definitionHash,if_match:preview.etag});
+ assert.equal(result.saved,true);assert.equal(result.readback.status,'matched');assert.equal(f.form.formxml,formXml);assert.equal(writes(f).length,1);
+});
+test('UI backup restore rejects stale or unprotected changes',async()=>{
+ const f=fixture(),snapshot=await f.service.getComponent({kind:'view',id:ids.view,logical_name:'new_sample'});
+ const args={kind:'view',id:ids.view,logical_name:'new_sample',solution_unique_name:'TestSolution',xml:snapshot.xml};
+ const preview=await f.service.restoreBackup(args);f.view.fetchxml=fetchXml.replace('new_old','new_name');
+ await assert.rejects(f.service.restoreBackup({...args,dry_run:false,expected_hash:preview.definitionHash,if_match:preview.etag}));assert.equal(writes(f).length,0);
+ const noConcurrency=fixture({concurrency:false});await assert.rejects(noConcurrency.service.restoreBackup(args));assert.equal(writes(noConcurrency).length,0);
+});

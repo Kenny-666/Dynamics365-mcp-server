@@ -12,7 +12,8 @@ const manifest = JSON.parse(await readFile(join(projectRoot, 'package.json'), 'u
 const entry = resolve(process.env.D365_SMOKE_ENTRY || join(projectRoot, manifest.main));
 const guard = join(projectRoot, 'tests/fixtures/deny-network.cjs');
 const expectedTools = [
-  'publish_sitemap',
+  'update_crm_user_profile','change_role_privilege','manage_security_role','list_role_privileges','create_onprem_domain_user','manage_user_roles','list_crm_charts','get_crm_chart','change_crm_chart','list_word_templates','download_word_template','change_word_template','list_note_attachments','download_note_attachment','download_note_attachments','delete_note_attachments','upload_note_attachments','backup_customization','restore_customization_backup','plan_sitemap_publication','publish_sitemap','resolve_model_name','check_model_configuration','edit_sitemap_xml','inspect_sitemap_applications','publish_appmodule',
+  'save_sitemap_with_journal','rollback_sitemap_journal','update_record_with_journal','rollback_record_journal','list_change_journal','get_change_journal',
   'import_ribbon_solution','publish_ribbon_solution','verify_ribbon_deployment',
   'get_ribbon_definition','inspect_ribbon_solution','edit_ribbon_solution',
   'get_solution_snapshot','compare_solution_snapshots','verify_solution_deployment','get_solution_import_log',
@@ -45,7 +46,7 @@ const expectedTools = [
 async function withServer(settings, run, options = {}) {
   const cwd = await mkdtemp(join(tmpdir(), 'd365-mcp-startup-'));
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
-    !/^(TENANT_ID|CLIENT_ID|CLIENT_SECRET|ENVIRONMENT_URL|ORG_URL|AUTH_TYPE|API_VERSION|CACHE_TTL|CACHE_TTL_SECONDS|REQUEST_TIMEOUT_MS|MAX_READ_RETRIES|MAX_RETRY_DELAY_MS|AD_.*|IFD_.*|DOTENV_.*|NODE_OPTIONS)$/i.test(key) &&
+    !/^(TENANT_ID|CLIENT_ID|CLIENT_SECRET|ENVIRONMENT_URL|ORG_URL|AUTH_TYPE|API_VERSION|CACHE_TTL|CACHE_TTL_SECONDS|REQUEST_TIMEOUT_MS|MAX_READ_RETRIES|MAX_RETRY_DELAY_MS|AD_.*|IFD_.*|D365_PROFILE|D365_PROFILE_.*|D365_TOOLSETS|D365_AUDIT_WRITES|D365_JOURNAL_DIR|D365_CONSULTANT_DIR|DOTENV_.*|NODE_OPTIONS)$/i.test(key) &&
     !(options.emptyPath && key.toLowerCase() === 'path')));
   const client = new Client({name:'startup-test', version:'1.0.0'});
   const transport = new StdioClientTransport({
@@ -176,4 +177,26 @@ test('unknown tools are distinguished from missing CRM configuration', {timeout:
     assert.match(payload.error, /Unknown tool/);
     assert.equal(payload.code, undefined);
   });
+});
+
+
+test('actual stdio advertises selected tools and per-call environment profile', {timeout:15000},async()=>{
+  await withServer({D365_TOOLSETS:'query'},async client=>{
+    const {tools}=await client.listTools();
+    assert.ok(tools.some(tool=>tool.name==='resolve_model_name'));
+    assert.ok(!tools.some(tool=>tool.name==='publish_sitemap'));
+    for(const tool of tools) assert.equal(tool.inputSchema.properties.environment_profile.type,'string');
+    const denied=await client.callTool({name:'publish_sitemap',arguments:{id:'11111111-1111-1111-1111-111111111111'}});
+    assert.equal(denied.isError,true);
+  });
+});
+
+
+test('optional consultant module works over stdio without CRM settings', {timeout:15000},async()=>{
+  const root=await mkdtemp(join(tmpdir(),'d365-consultant-stdio-'));
+  try{await withServer({D365_TOOLSETS:'consultant',D365_CONSULTANT_DIR:root},async client=>{
+    const {tools}=await client.listTools();assert.deepEqual(tools.map(t=>t.name),['manage_consultant_project']);
+    const result=await client.callTool({name:'manage_consultant_project',arguments:{action:'create_project',project_id:'Demo',name:'测试项目'}});
+    assert.notEqual(result.isError,true);assert.equal(JSON.parse(result.content[0].text).projectId,'Demo');
+  });}finally{await rm(root,{recursive:true,force:true});}
 });

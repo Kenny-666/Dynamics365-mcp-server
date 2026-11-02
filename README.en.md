@@ -4,15 +4,15 @@
 
 Connect AI assistants to Microsoft Dataverse / Dynamics 365 Customer Engagement through the Model Context Protocol (MCP).
 
-Built with **TypeScript and the Dataverse Web API**, this server provides **85 tools** for record queries and mutations, metadata, Web Resources, plugin registration, data modeling, diagnostics and auditing, solutions, and classic Ribbon buttons. It connects to MCP clients over **stdio** and includes a local Web debugger.
+Built with **TypeScript and the Dataverse Web API**, this server provides **116 tools by default** for record queries and mutations, metadata, Web Resources, plugin registration, data modeling, diagnostics and auditing, solutions, and classic Ribbon buttons. It connects to MCP clients over **stdio** and includes a local Web debugger.
 
-**Current status:** version 1.0.1 adds `publish_sitemap`, bringing the inventory to 85 tools; all 943 local regression tests pass. The old ZIP lacked a dedicated publication workflow after a SiteMap save. The fix passed actual stdio-to-local-fake-CRM integration; it has not been accepted in the colleague's live environment. Historical 65/84-tool live evidence and other limits remain in the [coverage matrix](docs/CRM_TOOL_COVERAGE.md). See [root cause, upgrade and usage](docs/SITEMAP_PUBLISHING.md).
+**Version 1.1.0:** 116 default tools plus one opt-in consultant tool. The release build passed 1,033 local tests and compiled all 117 tool schemas; live acceptance of the newer tools remains pending.
 
 [Feature checklist](#feature-checklist) · [Architecture and request flow](#architecture-and-request-flow) · [Quick start](#quick-start) · [Authentication](#authentication) · [Examples](#examples) · [Writes and deployment](#writes-publication-and-result-interpretation) · [Tool catalog](#tool-catalog) · [Testing and validation](#testing-and-validation)
 
 ## Feature checklist
 
-The following capabilities are implemented in code and grouped by usage scenario. Implementation and passing local tests do not establish acceptance in a real CRM environment.
+The following baseline capabilities are implemented in code and grouped by usage scenario. The current development inventory additionally includes the tools documented in [the tool reference](docs/TOOL_REFERENCE.md). Implementation and passing local tests do not establish acceptance in a real CRM environment.
 
 | Area | Tools | Capabilities |
 | --- | ---: | --- |
@@ -28,7 +28,7 @@ The following capabilities are implemented in code and grouped by usage scenario
 | SiteMap publication | 1 | Saved-definition preview, native PublishXml and independent published XML readback, without CSDL |
 | Classic Ribbon | 6 | Read definitions, edit local candidate packages, perform controlled import, publish separately, and read definitions back |
 
-Discover tools through MCP `tools/list` and invoke them through `tools/call`. **85 is the number of tools; 943 is the number of local test cases. These are different measures.** Live acceptance is tracked per tool. Preview, local-fixture, empty-result, and partial-read checks are not full functional acceptance; see the [85-tool matrix](docs/CRM_TOOL_COVERAGE.md). See the [tool reference](docs/TOOL_REFERENCE.md) for parameters and limitations.
+Discover tools through MCP `tools/list` and invoke them through `tools/call`. **The default development inventory has 116 tools; 943 is the historical baseline local test count. These are different measures.** Live acceptance is tracked per tool. Preview, local-fixture, empty-result, and partial-read checks are not full functional acceptance; see the [85-tool matrix](docs/CRM_TOOL_COVERAGE.md). See the [tool reference](docs/TOOL_REFERENCE.md) for parameters and limitations.
 
 ### Queries, records, and operational evidence
 
@@ -523,22 +523,22 @@ The debugger checks Host/Origin, limits request bodies, and protects static file
 
 ## Testing and validation
 
-Most recent full local test pass: **2026-10-29**.
+Most recent full local test pass: **2026-11-02**.
 
 | Check | Result |
 | --- | --- |
-| Isolated installation and release build | Passed; 192 dependencies installed offline, .NET build with zero warnings/errors |
-| Full regression suite | **943 passed**, zero failures/skips; 29 test files |
-| Tool contracts | All 85 input Schemas compiled; tool names are unique and test-file discovery matches the configured suite |
+| Dependency check and release build | Existing locked dependencies verified; .NET build completed with zero warnings/errors |
+| Full regression suite | **1,033 passed**, zero failures/skips; 56 test files |
+| Tool contracts | All 117 registered input Schemas compiled; tool names are unique and test-file discovery matches the configured suite |
 | ZIP robustness | 256 deterministic truncated/mutated samples rejected as expected |
 | Real localhost HTTP | 10 checks passed, in addition to in-process handler regression tests |
-| Extracted stdio / CLI package | 14 startup checks passed on each of Node 24.18.0 and 24.22.1, without node_modules |
+| Packaged stdio / CLI | 16 startup checks passed; local fake-CRM SiteMap package validation passed with 116 default tools and zero real CRM requests |
 | Historical source coverage (2026-10-29 baseline) | 98.71% lines, 90.61% branches, 97.21% functions |
 | Historical live CRM integration (1.0.0) | CRM 9.1.7.5 / API v9.1 / AD/NTLM; 65/85 tools called; 20 write/readback paths passed; 2 publication requests accepted; all new objects cleaned |
 
 The historical coverage figures measure 72 source files in the previous baseline; coverage was not remeasured for this patch. It excludes unloaded source, the bundled subprocess, and .NET code. Startup checks on the two runtimes overlap with scenarios in the main suite and must not be added together as distinct functional tests.
 
-The 943-test regression suite used offline fixtures and request substitutes. Separate live evidence covers records, transactions, Web Resources, new tables/columns, labels/settings, relationships, views, choices, keys and publication; see the [per-tool results](docs/CRM_TOOL_COVERAGE.md). Relationship clearing and CSDL remain unresolved. Key reactivation is blocked by native customization metadata. Form library editing passed; adding fields to the default non-uniform section is explicitly rejected. Other authentication modes, broader permissions/concurrency/failure cases, plugin execution and Ribbon UI acceptance remain pending. No online dependency vulnerability audit or production load test was performed.
+The 1,033-test regression suite used offline fixtures and request substitutes. Separate live evidence covers records, transactions, Web Resources, new tables/columns, labels/settings, relationships, views, choices, keys and publication; see the [per-tool results](docs/CRM_TOOL_COVERAGE.md). Relationship clearing and CSDL remain unresolved. Key reactivation is blocked by native customization metadata. Form library editing passed; adding fields to the default non-uniform section is explicitly rejected. Other authentication modes, broader permissions/concurrency/failure cases, plugin execution and Ribbon UI acceptance remain pending. No online dependency vulnerability audit or production load test was performed.
 
 To reproduce from the source directory:
 

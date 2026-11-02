@@ -10,8 +10,31 @@ export class ConfigurationError extends Error {
   }
 }
 
+const PROFILE_SETTINGS = [
+  'TENANT_ID','CLIENT_ID','CLIENT_SECRET','ENVIRONMENT_URL','ORG_URL','AUTH_TYPE','API_VERSION',
+  'CACHE_TTL','CACHE_TTL_SECONDS','REQUEST_TIMEOUT_MS','MAX_READ_RETRIES','MAX_RETRY_DELAY_MS',
+  'AD_USERNAME','AD_PASSWORD','AD_DOMAIN','AD_WORKSTATION',
+  'IFD_ADFS_URL','IFD_CLIENT_ID','IFD_CLIENT_SECRET','IFD_USERNAME','IFD_PASSWORD',
+  'IFD_RESOURCE','IFD_GRANT_TYPE','IFD_TOKEN_PATH',
+] as const;
+
+/** Select one isolated named profile at process startup. No CRM settings fall back to another profile. */
+export function selectEnvironmentSettings(env:NodeJS.ProcessEnv):NodeJS.ProcessEnv {
+  const profile = env.D365_PROFILE?.trim();
+  if (!profile) return env;
+  if (!/^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(profile)) throw new ConfigurationError(['D365_PROFILE must be a profile name of up to 32 letters, digits or underscores']);
+  const prefix = `D365_PROFILE_${profile.toUpperCase()}__`;
+  const selected:NodeJS.ProcessEnv = {};
+  for (const setting of PROFILE_SETTINGS) {
+    if (env[prefix + setting] !== undefined) selected[setting] = env[prefix + setting];
+  }
+  if (!Object.keys(selected).length) throw new ConfigurationError(['D365_PROFILE does not match a configured profile']);
+  return selected;
+}
+
 /** Read configuration without creating a connection or throwing on missing settings. */
 export function readConfig(env: NodeJS.ProcessEnv = process.env): D365Config {
+  env = selectEnvironmentSettings(env);
   const cacheTtl = Number(env.CACHE_TTL || env.CACHE_TTL_SECONDS || '7200');
   return {
     tenantId: (env.TENANT_ID || '').trim().replace(/^["']|["']$/g, ''),

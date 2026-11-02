@@ -2,9 +2,11 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { tools, handleToolCall } from '../tool_handler.js';
+import { selectTools, handleToolCall } from '../tool_handler.js';
 import { CrmRequestError, toolErrorPayload } from '../errors.js';
 import { validateDebugRequest, debugStaticPath, parseDebugCall } from './requestGuard.js';
+
+const tools = selectTools();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = 3000;
