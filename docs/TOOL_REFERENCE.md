@@ -1,3 +1,5 @@
+[简体中文](TOOL_REFERENCE.zh-CN.md)
+
 # Development additions: tools, profiles and journals
 
 The development build exposes 116 tools by default. Set `D365_TOOLSETS` to select `query`, `data`, `config`, `deploy`, `diagnostics` or the opt-in `consultant` group; omit it or use `all` for the default CRM inventory (the consultant module remains excluded). MCP tool calls accept `environment_profile` to select an isolated named profile. If omitted, the process default is used. Define profile settings with `D365_PROFILE_<NAME>__<SETTING>`; settings and credentials are never inherited from another profile.

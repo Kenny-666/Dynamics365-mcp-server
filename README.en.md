@@ -4,31 +4,39 @@
 
 Connect AI assistants to Microsoft Dataverse / Dynamics 365 Customer Engagement through the Model Context Protocol (MCP).
 
-Built with **TypeScript and the Dataverse Web API**, this server provides **116 tools by default** for record queries and mutations, metadata, Web Resources, plugin registration, data modeling, diagnostics and auditing, solutions, and classic Ribbon buttons. It connects to MCP clients over **stdio** and includes a local Web debugger.
+Built with **TypeScript and the Dataverse Web API**, this server provides **116 tools by default**, plus **one opt-in local consultant tool**. It supports records and metadata, Web Resources, plugins, data modeling, diagnostics/audit, solutions, classic Ribbon, SiteMaps/applications, journals/backups, attachments, templates, charts, and user/role administration. It connects over **stdio** and includes a local Web debugger.
 
-**Version 1.1.0:** 116 default tools plus one opt-in consultant tool. The release build passed 1,033 local tests and compiled all 117 tool schemas; live acceptance of the newer tools remains pending.
+**Current source version: 1.1.1.** Web Resource create/update/publish now propagate MCP cancellation through the service and HTTP requests, and check cancellation before writes/publication. An already submitted CRM operation may still take effect; cancellation does not roll it back. The recorded 1.1.0 full local regression passed 1,033 tests (56 files) and compiled 117 registered tool schemas. These historical results are not a new full-regression result for the current HEAD. Live acceptance of newer functionality remains pending; see the [historical live coverage](docs/CRM_TOOL_COVERAGE.md) (65/84 tools called) and [SiteMap publication guide](docs/SITEMAP_PUBLISHING.md).
 
-[Feature checklist](#feature-checklist) · [Architecture and request flow](#architecture-and-request-flow) · [Quick start](#quick-start) · [Authentication](#authentication) · [Examples](#examples) · [Writes and deployment](#writes-publication-and-result-interpretation) · [Tool catalog](#tool-catalog) · [Testing and validation](#testing-and-validation)
+[Feature checklist](#feature-checklist) · [Architecture and request flow](#architecture-and-request-flow) · [Quick start](#quick-start) · [Authentication](#authentication) · [Examples](#examples) · [Writes and deployment](#writes-publication-and-result-interpretation) · [Extended workflows](#tool-groups-profiles-and-extended-workflows) · [Tool catalog](#tool-catalog) · [Testing and validation](#testing-and-validation)
 
 ## Feature checklist
 
-The following baseline capabilities are implemented in code and grouped by usage scenario. The current development inventory additionally includes the tools documented in [the tool reference](docs/TOOL_REFERENCE.md). Implementation and passing local tests do not establish acceptance in a real CRM environment.
+The following capabilities are implemented in code and grouped by usage scenario. Implementation and passing local tests do not establish acceptance in a real CRM environment.
 
 | Area | Tools | Capabilities |
 | --- | ---: | --- |
-| Environment and metadata | 8 | User and organization context, environment capabilities, tables, fields, choices, navigation relationships, and cache clearing |
-| Queries and paging | 3 | OData, FetchXML, state filtering, paging, and query continuation |
-| Records and transactions | 9 | CRUD, alternate-key upsert, associations, batches, and native transactions |
-| Web Resources | 4 | Search, create, update, and independently publish resources such as scripts |
-| Plugin registration | 11 | Assembly inspection and compatible updates, step registration and updates, and Pre/Post Images |
-| Diagnostics, security, and audit | 9 | Plugin traces, failed jobs, principals and roles, effective access, and audit evidence |
-| Data model and UI definitions | 20 | Tables, columns, relationships, alternate keys, choices, form/view structure, and publication |
-| Actions and Functions | 2 | Discover native operation signatures from current CSDL, validate parameters, and invoke operations |
-| Solutions | 12 | Components and dependencies, ZIP inspection, export and restricted import, job status, snapshots, and verification |
-| SiteMap publication | 1 | Saved-definition preview, native PublishXml and independent published XML readback, without CSDL |
-| Classic Ribbon | 6 | Read definitions, edit local candidate packages, perform controlled import, publish separately, and read definitions back |
+| Environment and metadata | 8 | User/organization, capabilities, tables, fields, choices, navigation and cache |
+| Queries and paging | 3 | OData, FetchXML, state rules, paging and continuation |
+| Records and transactions | 9 | CRUD, alternate-key Upsert, associations, batches and transactions |
+| Web Resources | 4 | Search, create/update, separate publication and cancellation propagation |
+| Plugin registration | 11 | Assembly inspection/update, steps and Pre/Post Images |
+| Diagnostics, security, and audit | 9 | Read-only logs, jobs, principals, effective access and audit evidence |
+| Data model and UI definitions | 20 | Tables, columns, relationships, keys, choices, forms/views and publication |
+| Actions and Functions | 2 | Discover CSDL signatures, validate and invoke native operations |
+| Solutions | 12 | Membership/dependencies, ZIP, export/import, jobs, snapshots and verification |
+| Classic Ribbon | 6 | Read/edit candidates, controlled import, separate publication and readback |
+| SiteMaps and applications | 7 | XML editing, associations, publication planning, SiteMap/app publication and journaled saves |
+| Model name resolution and checks | 2 | Resolve names/localized labels; inspect required fields and form/view configuration |
+| Journals and customization backups | 6 | Scalar record rollback, journal summaries and guarded customization restore |
+| Note attachments | 5 | List, single/batch download, batch upload and guarded deletion |
+| Word templates | 3 | Organization/personal DOCX list/download/create/update/delete |
+| Charts | 3 | System/personal chart list/read/create/update/delete |
+| Users and roles | 6 | User profile/status, domain users, roles, direct assignments and privileges |
+| **Default total** | **116** | D365_TOOLSETS omitted or set to all |
+| Optional consultant | 1 (excluded from default total) | Explicit consultant selection; local DOCX, UAT XLSX and HTML generation/comparison/restore |
 
-Discover tools through MCP `tools/list` and invoke them through `tools/call`. **The default development inventory has 116 tools; 943 is the historical baseline local test count. These are different measures.** Live acceptance is tracked per tool. Preview, local-fixture, empty-result, and partial-read checks are not full functional acceptance; see the [85-tool matrix](docs/CRM_TOOL_COVERAGE.md). See the [tool reference](docs/TOOL_REFERENCE.md) for parameters and limitations.
+Discover tools through MCP `tools/list` and invoke them through `tools/call`. The complete catalog below contains **116 default tools + 1 optional consultant tool**; tool counts and test-case counts are separate measures. Parameters and limits are in the [English tool reference](docs/TOOL_REFERENCE.md) and [Chinese translation](docs/TOOL_REFERENCE.zh-CN.md). The [coverage matrix](docs/CRM_TOOL_COVERAGE.md) preserves the historical 84-tool live baseline and the later 85-tool baseline; it does not certify live acceptance of the current inventory.
 
 ### Queries, records, and operational evidence
 
@@ -41,7 +49,7 @@ Discover tools through MCP `tools/list` and invoke them through `tools/call`. **
 | Record associations | Set/clear Lookups and add/remove collection relationships | Disassociation does not delete related records; collection changes require explicit acceptance of concurrency limits |
 | Batches and transactions | Run independent operations in chunks or submit one native transactional change set | Independent batches do not roll back earlier operations; preflight reads occur outside the transaction |
 | Plugin failure diagnostics | Read diagnostic settings, traces, and failed system jobs; link step evidence | Read-only analysis, without automatic repair or treating correlation as a proven cause |
-| Security and audit | Inspect users/teams/roles, effective record access, and native audit details | No privilege elevation or role changes; old/new audit values are withheld by default |
+| Security and audit | Inspect users/teams/roles, effective record access, and native audit details | These read-only inspection tools do not change roles; explicit administration uses the separate user/role tools. Audit values are withheld by default |
 
 ### Development and customization
 
@@ -71,6 +79,19 @@ Discover tools through MCP `tools/list` and invoke them through `tools/call`. **
 | Local Ribbon editing | Add standalone custom JS buttons, update labels/order, hide/restore visibility, and create a candidate ZIP | Preserves other package contents; does not automatically import, publish, or execute JavaScript |
 | Controlled Ribbon deployment | Import a candidate into an existing ordinary unmanaged solution, publish the table separately, and read selected definitions back | Explicit whole-package/table acknowledgments and a same-process receipt; UI acceptance remains separate |
 
+### Users, reusable assets, and recovery
+
+| Feature | What you can do | Main boundary |
+| --- | --- | --- |
+| Users and roles | Preview profile/status changes, create on-premises domain users, manage unmanaged roles and direct assignments/privileges | ETag or explicit concurrency acknowledgments apply; direct roles are not effective access |
+| Attachments | List/download note attachments; preview batch upload/delete | Sequential bounded writes; delete requires native ETags; proprietary storage excluded |
+| Templates and charts | Manage organization/personal Word templates and system/personal charts | Save acceptance is separate from template generation or chart runtime; system charts require separate table publication |
+| SiteMaps and applications | Edit local XML, inspect direct app links, plan and separately publish SiteMap/application changes | Planning is read-only; SiteMap/app publication and browser behavior are separate checks |
+| Journals and backups | Capture before-images; conditionally restore scalar fields, SiteMaps and supported saved customizations | Dedicated journal tools only; ETag/readback requirements apply and restore does not publish |
+| Model configuration checks | Resolve names/labels and inspect forms, required fields and views | Visible metadata and XML do not cover all runtime rules |
+| Profiles and tool groups | Select isolated CRM profiles per call; restrict discovery and invocation by group | Credentials are not inherited between profiles; restart after configuration changes |
+| Optional consultant | Generate editable DOCX/UAT XLSX/offline HTML and compare/restore versions | Explicit opt-in, local files only; no CRM connection or upload |
+
 ## Architecture and request flow
 
 ### Overall architecture
@@ -83,17 +104,20 @@ flowchart TB
     Browser["Local browser"] -->|"127.0.0.1:3000 / HTTP"| Debug["Local debugger"]
     MCP --> Router["Tool definitions and routing"]
     Debug --> Router
+    Router --> Groups["Tool groups / optional consultant"]
     Router --> Local["Offline tools"]
     Router --> Services["CRM services and validation"]
-    Local --> Files["ZIP / snapshot / local cache operations"]
+    Local --> Files["ZIP / snapshots / local consultant files"]
     Local --> Reader[".NET DLL metadata reader"]
     Services -.->|"Assembly inspection"| Reader
     Services -.-> State["In-process cache and continuation state"]
-    Services --> Auth["Authentication and request policy"]
+    Services --> Profiles["Isolated named CRM profiles"]
+    Services --> Journal["Persistent journals / backups / call events"]
+    Profiles --> Auth["Authentication and request policy"]
     Auth -->|"Dataverse Web API"| CRM["Configured CRM organization"]
 ```
 
-Configuration, caches, continuation state, and Ribbon import receipts belong to the server process; they are not a persistent workflow across processes. The .NET reader is used only by the relevant assembly inspection/update paths; other CRM tools do not depend on it.
+Named profiles isolate connections and caches. Continuation state and Ribbon import receipts are process-local. Journals/backups and consultant assets use configured local directories and persist as files; they do not turn every operation into a recoverable workflow. The .NET reader is used only by the relevant assembly inspection/update paths; other CRM tools do not depend on it.
 
 ### How a tool call completes
 
@@ -106,7 +130,7 @@ sequenceDiagram
     participant R as Tool routing and services
     participant A as Configured CRM Web API
     C->>M: tools/list
-    M-->>C: 85 tools and input Schemas
+    M-->>C: 116 default tools and input Schemas
     C->>M: tools/call(name, arguments)
     M->>R: Dispatch with cancellation/progress context
     alt Offline tool
@@ -172,7 +196,7 @@ Add the server to a client that supports stdio MCP. The following example applie
 
 Set `args` to the **absolute path** of your build and replace the connection settings. Windows JSON paths can use `/`; backslashes must be escaped as `\\`. If the client cannot find node, use the absolute path to the Node executable in `command`.
 
-Save the configuration and restart the MCP service in your client. Confirm that **85 tools** are listed, then call `get_current_user_context` and `get_environment_capabilities` to inspect the identity and environment. Capability discovery does not establish that permissions or write operations have been validated.
+Save the configuration and restart the MCP service in your client. Confirm that **116 tools** are listed with the default tool groups, then call `get_current_user_context` and `get_environment_capabilities` to inspect the identity and environment. Capability discovery does not establish that permissions or write operations have been validated.
 
 CRM services initialize on demand: the server can start and list tools without connection settings, and validates them on the first CRM call. Restart the service after changing environment variables.
 
@@ -384,10 +408,69 @@ Status checks in this diagram are caller-triggered, not automatic background pol
 
 After saving `sitemapxml`, use `publish_sitemap`: preview first, then execute with its `planHash`. The dedicated path calls PublishXml directly and verifies the published definition, without the generic Action tool's CSDL prerequisite. See [SiteMap publication](docs/SITEMAP_PUBLISHING.md) for scope, parameters and error interpretation.
 
+## Tool groups, profiles, and extended workflows
+
+### Optional tool groups
+
+Set `D365_TOOLSETS` to a comma-separated selection of `query`, `data`, `config`, `deploy`, and `diagnostics` to limit both discovery and invocation. For example, `D365_TOOLSETS=query,config`. Omit it or set it to `all` to expose the default CRM tools; explicitly select `consultant` to enable the optional local module. Restart the server after changing it. Unknown group names fail startup.
+
+`edit_sitemap_xml` generates a local candidate SiteMap XML with group, subarea and Title-attribute edits. Use `set_localized_title` with `language_code` and `title` to update one localized label while preserving other languages. It does not save or publish. Review the XML, save with `update_existing_record`, and publish separately using `publish_sitemap`.
+
+`inspect_sitemap_applications` reads direct application associations for a SiteMap. Results reflect the current identity and do not establish complete dependencies, publication status, or browser behavior; preview publication separately using `publish_sitemap`.
+
+### Named environment profiles
+
+Set `D365_PROFILE=TEST` and provide settings such as `D365_PROFILE_TEST__AUTH_TYPE`, `D365_PROFILE_TEST__ORG_URL`, and the corresponding authentication settings. Every CRM setting uses the `D365_PROFILE_<NAME>__<SETTING>` prefix. Selected profiles do not inherit unprefixed settings or credentials from other profiles. Pass `environment_profile` on a tool call to choose a named profile; when omitted, the configured default applies. Connections and caches are isolated, with at most 16 profiles per process. Do not commit real credentials.
+
+Example named-profile settings (placeholders only):
+
+```dotenv
+D365_PROFILE=TEST
+D365_PROFILE_TEST__AUTH_TYPE=op_ad
+D365_PROFILE_TEST__ORG_URL=https://crm-test.example.invalid
+D365_PROFILE_TEST__AD_USERNAME=example
+D365_PROFILE_TEST__AD_DOMAIN=DOMAIN
+D365_PROFILE_TEST__AD_PASSWORD=replace-me
+```
+
+### SiteMap and application publication
+
+`publish_appmodule` previews an AppModule publication; execution requires the preview hash and `allow_app_publish=true`. Acceptance does not verify app runtime or dependencies, and unknown outcomes are not retried.
+
+### Journals, backups, and call events
+
+`save_sitemap_with_journal` backs up SiteMap XML before an ETag-guarded save; `rollback_sitemap_journal` previews and restores a verified version. Set absolute `D365_JOURNAL_DIR` and protect it: entries contain CRM XML. Neither action publishes. Rollback is blocked after changes and cannot be verified without a write-response ETag. This journal covers only saves through this tool.
+
+`update_record_with_journal` and `rollback_record_journal` support protected updates and limited restoration of scalar record fields. Bindings, creates and deletes are excluded. Journal entries contain original values; protect `D365_JOURNAL_DIR`. Other write tools do not automatically produce this journal.
+
+`list_change_journal` and `get_change_journal` show journal summaries for the current CRM identity and environment without disclosing backup values. Rollback eligibility must still be checked with a fresh preview.
+
+Set `D365_AUDIT_WRITES=true` and an absolute `D365_JOURNAL_DIR` to persist call-level events for CRM write-class tools before dispatch. Previews may also be recorded. Events omit arguments, field values and response bodies; `call_completed` only means that the tool returned, not that CRM changes were published or verified. Events are not rollback backups. If the journal cannot be created the call is blocked; if finalization fails after the call, inspect CRM before retrying. Offline tools are excluded.
+
+`plan_sitemap_publication` combines the SiteMap preview, directly associated applications, bounded native dependencies and individual application previews. Unavailable reads are reported as partial results. It performs no publication; submit and check each component separately.
+
+`backup_customization` captures saved/unpublished Web Resources, main forms and public system views; `restore_customization_backup` requires a fresh preview and native ETag and performs readback. Form and view restores require `solution_unique_name`. Neither publishes. Entries include original content: protect `D365_JOURNAL_DIR`. Restore requires supported ETags; managed Web Resources and other form/view types are excluded.
+
+### Attachments, templates, charts, and administration
+
+Standard CRM note attachments support list, download, batch download, batch upload and batch delete. Upload and delete default to preview and require a current `planHash` to execute. Batch writes are sequential and stop on failure or unknown outcome; limits are 5 MiB per file and 20 MiB per upload batch. Existing local files are never overwritten. Delete requires native optimistic concurrency and specific ETags. Proprietary storage is excluded.
+
+Use `list_word_templates`, `download_word_template` and `change_word_template` for organization or personal CRM Word templates. Writes default to preview; create and update validate DOCX container structure, and update/delete require native optimistic concurrency. CRM acceptance does not verify template mappings or document generation.
+
+Use `list_crm_charts`, `get_crm_chart`, and `change_crm_chart` for system and personal charts. System chart writes require an unmanaged solution and do not publish automatically; separately preview `publish_model_table` and its table-wide scope. Updates and deletes require ETags. XML checks cover bounded structure, not full schema or runtime behavior.
+
+`update_crm_user_profile` previews and updates selected profile fields or enabled status using an ETag; status changes require acknowledgement. `manage_security_role` previews and creates, updates or deletes an unmanaged role without changing its privileges. `create_onprem_domain_user` previews and creates an on-premises AD/IFD domain user. `manage_user_roles` previews and verifies direct role assignments/removals; `list_role_privileges` reads direct privilege IDs and depth masks; `change_role_privilege` previews and adds or removes one direct privilege when current CSDL supports the operation. Changing depth requires separate removal and addition and is not atomic. Role associations cannot be atomically locked and require explicit unprotected-write acknowledgement; cross-business-unit changes also require acknowledgement and native CRM support. Direct roles do not prove effective record permissions.
+
+### Optional consultant workspace
+
+Explicitly select `D365_TOOLSETS=consultant` or combine it with other groups, e.g. `query,consultant`; default `all` excludes this module. Set `D365_CONSULTANT_DIR` to an existing absolute local directory and protect it as it can contain customer material. The module works locally without connecting to CRM or uploading content.
+
+`manage_consultant_project` supports `create_project`, `import_material`, `list_assets`, `generate_document`, `generate_uat`, `generate_prototype`, `compare_document_versions`, and `restore_asset`. Generated DOCX, XLSX and offline HTML are versioned as new files; restore never overwrites an old asset. Project IDs start with a letter and use letters, numbers, underscores or hyphens. For a document, pass `spec` with `title` and `sections` (`heading`, `body`). For UAT, pass `spec.cases` requiring `id`, `scenario`, and `expected`; optional fields are `preconditions`, `steps`, `actual`, `status`, and `tester`. For a prototype, use `spec` with `title`, optional `description`, and `fields` (`label`, `type`, `placeholder`); alternatively use `spec.pages` containing a title and fields per page. Prototypes are offline demonstrations and do not write to CRM.
+
 ## Tool catalog
 
 <details>
-<summary>Expand all 85 tools</summary>
+<summary>Expand all 116 default tools and 1 optional tool</summary>
 
 ### Environment and metadata (8)
 
@@ -458,7 +541,6 @@ After saving `sitemapxml`, use `publish_sitemap`: preview first, then execute wi
 - `create_model_column`
 - `update_model_labels`
 - `publish_model_table`
-- `publish_sitemap`
 - `get_model_relationship`
 - `create_model_relationship`
 - `get_model_key`
@@ -504,6 +586,62 @@ After saving `sitemapxml`, use `publish_sitemap`: preview first, then execute wi
 - `publish_ribbon_solution`
 - `verify_ribbon_deployment`
 
+### SiteMaps and applications (7)
+
+- `publish_sitemap`
+- `edit_sitemap_xml`
+- `inspect_sitemap_applications`
+- `plan_sitemap_publication`
+- `publish_appmodule`
+- `save_sitemap_with_journal`
+- `rollback_sitemap_journal`
+
+### Model name resolution and checks (2)
+
+- `resolve_model_name`
+- `check_model_configuration`
+
+### Journals and customization backups (6)
+
+- `update_record_with_journal`
+- `rollback_record_journal`
+- `list_change_journal`
+- `get_change_journal`
+- `backup_customization`
+- `restore_customization_backup`
+
+### Note attachments (5)
+
+- `list_note_attachments`
+- `download_note_attachment`
+- `download_note_attachments`
+- `upload_note_attachments`
+- `delete_note_attachments`
+
+### Word templates (3)
+
+- `list_word_templates`
+- `download_word_template`
+- `change_word_template`
+
+### Charts (3)
+
+- `list_crm_charts`
+- `get_crm_chart`
+- `change_crm_chart`
+
+### Users and roles (6)
+
+- `update_crm_user_profile`
+- `manage_security_role`
+- `create_onprem_domain_user`
+- `manage_user_roles`
+- `list_role_privileges`
+- `change_role_privilege`
+
+### Optional consultant (1, disabled by default)
+
+- `manage_consultant_project`
 
 </details>
 
@@ -523,7 +661,7 @@ The debugger checks Host/Origin, limits request bodies, and protects static file
 
 ## Testing and validation
 
-Most recent full local test pass: **2026-11-02**.
+Recorded full local regression for **1.1.0 (2026-11-02)** is shown below. Current source version is **1.1.1**; these figures are historical validation, not a newly executed full suite for this documentation update.
 
 | Check | Result |
 | --- | --- |
@@ -534,7 +672,7 @@ Most recent full local test pass: **2026-11-02**.
 | Real localhost HTTP | 10 checks passed, in addition to in-process handler regression tests |
 | Packaged stdio / CLI | 16 startup checks passed; local fake-CRM SiteMap package validation passed with 116 default tools and zero real CRM requests |
 | Historical source coverage (2026-10-29 baseline) | 98.71% lines, 90.61% branches, 97.21% functions |
-| Historical live CRM integration (1.0.0) | CRM 9.1.7.5 / API v9.1 / AD/NTLM; 65/85 tools called; 20 write/readback paths passed; 2 publication requests accepted; all new objects cleaned |
+| Historical live CRM integration (1.0.0) | CRM 9.1.7.5 / API v9.1 / AD/NTLM; 65/84 tools called; 20 write/readback paths passed; 2 publication requests accepted; all new objects cleaned |
 
 The historical coverage figures measure 72 source files in the previous baseline; coverage was not remeasured for this patch. It excludes unloaded source, the bundled subprocess, and .NET code. Startup checks on the two runtimes overlap with scenarios in the main suite and must not be added together as distinct functional tests.
 
@@ -608,4 +746,4 @@ When changing a tool, update its Schema, implementation, regression tests, and d
 
 ## License
 
-[package.json](package.json) currently declares **MIT**, but the source directory does not yet contain the LICENSE text. Before a public open-source release, add the license file and confirm the licensing notices for included code and third-party dependencies.
+Licensed under [MIT](LICENSE). Third-party dependency notices are in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt); portable distribution runtime licenses are included with that package.
