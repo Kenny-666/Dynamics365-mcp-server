@@ -20,7 +20,7 @@ The client normally starts the server automatically. `start-mcp.cmd` starts the 
 
 ## Capabilities and validation
 
-Version 1.0.1 adds publish_sitemap; 1,033 local regression tests for 1.1.0 and the historical fake-CRM publication workflow passed. Preview first, then execute with the returned planHash. See app/docs/SITEMAP_PUBLISHING.md for scope and parameters. Live colleague-environment acceptance remains pending.
+Version 1.0.1 adds publish_sitemap; 1,033 local regression tests for 1.1.1 and the historical fake-CRM publication workflow passed. Preview first, then execute with the returned planHash. See app/docs/SITEMAP_PUBLISHING.md for scope and parameters. Live colleague-environment acceptance remains pending.
 
 
 The default inventory has 116 CRM tools; the optional consultant group adds one local-only tool. They cover records/OData/FetchXML, tables and columns, relationships/keys/choices, forms/views, Web Resources, plugins and DLL inspection, audit/security/diagnostics, solutions and classic Ribbon workflows. See the full documentation for parameters.
@@ -33,4 +33,4 @@ Write, delete, import and publish tools use the configured identity's real CRM p
 
 Share the original ZIP. Before repackaging a configured folder, remove `.env`, real credentials and user-generated CRM files. The original archive contains placeholder templates only.
 
-`runtime/` contains runtimes; `app/` contains the server, DLL reader and documentation; `licenses/` contains notices; `manifest.json` records original file hashes; `release-info.json` records versions and validation. User-created configuration files are outside the original hash manifest. This is the 1.1.0 build. See the included license declarations.
+`runtime/` contains runtimes; `app/` contains the server, DLL reader and documentation; `licenses/` contains notices; `manifest.json` records original file hashes; `release-info.json` records versions and validation. User-created configuration files are outside the original hash manifest. This is the 1.1.1 build. See the included license declarations.

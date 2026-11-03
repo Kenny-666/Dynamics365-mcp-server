@@ -262,6 +262,34 @@ test('publish preview performs no CRM calls and includes the environment and sin
   assert.equal(calls.length, 0);
 });
 
+test('cancelled Web Resource mutations do not dispatch or continue writes', async () => {
+  const cancelled = new AbortController();
+  cancelled.abort();
+  for (const invoke of [
+    service => service.update({id:ID, content:'x', publish:false}, cancelled.signal),
+    service => service.publish({id:ID}, cancelled.signal),
+  ]) {
+    const {service, calls} = fixture();
+    await assert.rejects(invoke(service));
+    assert.equal(calls.length, 0);
+  }
+
+  for (const invoke of [
+    (service, signal) => service.create({...base, publish:true}, signal),
+    (service, signal) => service.update({id:ID, content:'x', publish:true}, signal),
+  ]) {
+    const controller = new AbortController();
+    const {service, calls} = fixture({write:call => {
+      assert.equal(call.options.signal, controller.signal);
+      controller.abort();
+      return call.method === 'POST' && call.endpoint.startsWith('/webresourceset')
+        ? response({webresourceid:ID}, {}, 201) : response();
+    }});
+    await assert.rejects(invoke(service, controller.signal));
+    assert.equal(calls.filter(call => call.endpoint === '/PublishXml').length, 0);
+  }
+});
+
 test('invalid write parameters and aliases fail before any CRM access', async () => {
   const {service, calls} = fixture();
   for (const patch of [

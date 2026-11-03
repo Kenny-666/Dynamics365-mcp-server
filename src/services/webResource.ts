@@ -57,6 +57,9 @@ function etag(value: unknown): string | undefined {
 function query(params: Record<string, string>): string { return new URLSearchParams(params).toString(); }
 function literal(value: string): string { return "'" + value.replace(/'/g, "''") + "'"; }
 function digest(bytes: Buffer) { return {bytes:bytes.length, sha256:createHash('sha256').update(bytes).digest('hex')}; }
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw signal.reason ?? new Error('Operation aborted.');
+}
 
 /** Preserve confirmed save evidence when a later phase fails. Never suggest replaying the save. */
 class WebResourcePhaseError extends CrmRequestError {
@@ -99,7 +102,7 @@ export class WebResourceService {
     return this.wrap('searchWebResources', {...result, value});
   }
 
-  async create(raw: unknown) {
+  async create(raw: unknown, signal?: AbortSignal) {
     const args = input(raw, ['name', 'display_name', 'web_resource_type', 'file_path', 'content',
       'content_encoding', 'description', 'publish', 'dry_run', 'solution_unique_name']);
     const name = string(args.name, 'name').trim();
@@ -117,7 +120,7 @@ export class WebResourceService {
     // Include saved/unpublished resources in duplicate detection. No silent downgrade on unsupported versions.
     const existing = await this.client.makeRequest('/webresourceset/Microsoft.Dynamics.CRM.RetrieveUnpublishedMultiple()?' + query({
       '$select':'webresourceid,name', '$filter':'name eq ' + literal(name), '$top':'1',
-    }));
+    }), 'GET', undefined, {signal});
     if (!existing || !Array.isArray(existing.value)) this.badResponse('Duplicate check did not return a record array.');
     if (existing.value.length || existing['@odata.nextLink']) {
       throw new CrmRequestError('D365_WEBRESOURCE_NAME_EXISTS', 'A saved Web Resource already has that name. Create will not overwrite it.', {outcome:'not_sent'});
@@ -128,8 +131,9 @@ export class WebResourceService {
       changes:{...payload, content:{before:null, after:digest(bytes)}}, publish, solutionUniqueName:solution,
       note:'Preview only. Duplicate checks are not a uniqueness lock; platform validation and privileges are evaluated on save.',
     });
+    throwIfAborted(signal);
     const response = await this.client.requestWithResponse<Resource>('/webresourceset?$select=webresourceid', 'POST',
-      {...payload, content:bytes.toString('base64')}, {headers:{Prefer:'return=representation',
+      {...payload, content:bytes.toString('base64')}, {signal, headers:{Prefer:'return=representation',
         ...(solution ? {'MSCRM.SolutionUniqueName':solution} : {})}});
     let createdId: string | undefined;
     if (typeof response.data?.webresourceid === 'string' && GUID.test(response.data.webresourceid)) createdId = response.data.webresourceid.toLowerCase();
@@ -146,7 +150,7 @@ export class WebResourceService {
     if (!createdId) throw new WebResourcePhaseError('D365_WEBRESOURCE_CREATE_ID_MISSING',
       'Save succeeded but no valid created ID was returned. Find the saved resource by name before publishing; do not recreate it.',
       operation, {success:false, saved:true, webresourceid:null, name, published:false, publication:{status:'not_attempted'}}, {outcome:'unknown'});
-    return this.finish(operation, createdId, publish, {name});
+    return this.finish(operation, createdId, publish, {name}, true, signal);
   }
 
   /** Read the saved definition including unpublished content for a local backup. */
@@ -186,7 +190,7 @@ export class WebResourceService {
     catch{throw new WebResourcePhaseError('D365_WEBRESOURCE_RESTORE_READBACK_FAILED','Restore was accepted but could not be verified. Do not repeat the write.','restoreWebResource',{...state,saved:true},{outcome:'unknown',retryable:false});}
   }
 
-  async update(raw: unknown) {
+  async update(raw: unknown, signal?: AbortSignal) {
     const args = input(raw, ['id', 'file_path', 'content', 'content_encoding', 'display_name', 'description', 'publish', 'dry_run', 'if_match']);
     const resourceId = id(args.id);
     const match = etag(args.if_match);
@@ -198,7 +202,7 @@ export class WebResourceService {
     const bytes = await this.content(args);
     const operation = 'updateWebResourceAndPublish';
     if (dryRun) {
-      const before = await this.client.makeRequest('/webresourceset(' + resourceId + ')/Microsoft.Dynamics.CRM.RetrieveUnpublished()?$select=' + SELECT + ',content');
+      const before = await this.client.makeRequest('/webresourceset(' + resourceId + ')/Microsoft.Dynamics.CRM.RetrieveUnpublished()?$select=' + SELECT + ',content', 'GET', undefined, {signal});
       if (!before || typeof before.webresourceid !== 'string' || before.webresourceid.toLowerCase() !== resourceId || typeof before.content !== 'string') {
         this.badResponse('Unpublished Web Resource read did not return the expected resource and content.');
       }
@@ -210,12 +214,13 @@ export class WebResourceService {
         note:'Preview reads the latest saved definition. It does not lock the resource or validate write privileges. Pass the returned ETag as if_match when saving.',
       });
     }
+    throwIfAborted(signal);
     await this.client.requestWithResponse('/webresourceset(' + resourceId + ')', 'PATCH',
-      {...payload, content:bytes.toString('base64')}, {headers:{'If-Match':match ?? '*'}});
-    return this.finish(operation, resourceId, publish);
+      {...payload, content:bytes.toString('base64')}, {signal, headers:{'If-Match':match ?? '*'}});
+    return this.finish(operation, resourceId, publish, {}, true, signal);
   }
 
-  async publish(raw: unknown) {
+  async publish(raw: unknown, signal?: AbortSignal) {
     const args = input(raw, ['id', 'dry_run']);
     const resourceId = id(args.id);
     if (flag(args.dry_run, 'dry_run', false)) return this.wrap('publishWebResource', {
@@ -223,17 +228,18 @@ export class WebResourceService {
       published:false, scope:'single_web_resource',
     });
     // Publish-only recovery must never save or replay content.
-    return this.finish('publishWebResource', resourceId, true, {}, false);
+    return this.finish('publishWebResource', resourceId, true, {}, false, signal);
   }
 
-  private async finish(operation: string, resourceId: string, publish: boolean, extra: Resource = {}, saved = true) {
+  private async finish(operation: string, resourceId: string, publish: boolean, extra: Resource = {}, saved = true, signal?: AbortSignal) {
     const data: Resource = {success:true, webresourceid:resourceId, ...extra, saved, published:false,
       publication:{status:'not_requested'}};
     if (publish) {
       try {
+        throwIfAborted(signal);
         await this.client.requestWithResponse('/PublishXml', 'POST', {
           ParameterXml:'<importexportxml><webresources><webresource>{' + resourceId + '}</webresource></webresources></importexportxml>',
-        });
+        }, {signal});
         data.published = true;
         data.publication = {status:'succeeded'};
       } catch (error) {

@@ -531,9 +531,9 @@ async function dispatchCrmTool(name:string,args:any,context:MutationContext,serv
     case 'd365_plugin_step_register': return await pluginStepService.register(args);
     case 'd365_plugin_step_update': return await pluginStepService.update(args);
     case 'search_web_resources_by_name': return await webResourceService.search(args);
-    case 'create_web_resource_and_publish': return await webResourceService.create(args);
-    case 'update_web_resource_and_publish': return await webResourceService.update(args);
-    case 'publish_web_resource': return await webResourceService.publish(args);
+    case 'create_web_resource_and_publish': return await webResourceService.create(args, context.signal);
+    case 'update_web_resource_and_publish': return await webResourceService.update(args, context.signal);
+    case 'publish_web_resource': return await webResourceService.publish(args, context.signal);
     case 'get_environment_capabilities':
       return await environmentService.getCapabilities();
     case 'get_entity_metadata_summary': {
