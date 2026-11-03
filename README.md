@@ -1,5 +1,3 @@
-> Version 1.1.0 provides 116 default tools and one opt-in consultant tool. The release build passed 1,033 local tests and compiled all 117 tool schemas; newly added functionality has not yet been fully validated against a live CRM environment.
-
 # Dynamics 365 MCP Server
 
 [简体中文](README.zh-CN.md) | **English**
