@@ -60,9 +60,9 @@ export class RecordJournalService {
   if(!preview.canWrite || !preview.concurrencyProtected)return fail('UNSUPPORTED','Native metadata did not confirm a concurrency-protected update.');
   if(dry)return {collectionName:collection,id,planHash,dryRun:true,canWrite:true,fields:Object.keys(after)};
   const entry:Row={version:1,kind:'record_update',journalId:randomUUID(),identity,collection,targetId:id,before:before.data,after,beforeHash:hash(stable(before.data)),afterHash:hash(stable(after)),status:'pending',createdAt:new Date().toISOString()};
-  await this.writeFile(entry,true);let result:Row;
-  try{result=await this.writer.execute('update',{collection_name:collection,id,data:after,if_match:before.version},signal);}catch{entry.status='unknown';await this.writeFile(entry).catch(()=>{});throw new RecordJournalError('WRITE_UNKNOWN','Write failed or its outcome is unknown. Inspect before retrying.',{journalId:entry.journalId},{outcome:'unknown',retryable:false});}
-  try{const current=await this.read(collection,id,Object.keys(after),signal);if(!result.etag || etag(result.etag)!==current.version || stable(current.data)!==stable(after))throw new Error('Mismatch');entry.afterEtag=current.version;entry.status='saved';await this.writeFile(entry);}catch{throw new RecordJournalError('READBACK_UNKNOWN','Write was accepted but readback could not be verified.',{journalId:entry.journalId},{outcome:'unknown',retryable:false});}
+  await this.writeFile(entry,true);
+  try{await this.writer.execute('update',{collection_name:collection,id,data:after,if_match:before.version},signal);}catch{entry.status='unknown';await this.writeFile(entry).catch(()=>{});throw new RecordJournalError('WRITE_UNKNOWN','Write failed or its outcome is unknown. Inspect before retrying.',{journalId:entry.journalId},{outcome:'unknown',retryable:false});}
+  try{const current=await this.read(collection,id,Object.keys(after),signal);if(stable(current.data)!==stable(after))throw new Error('Mismatch');entry.afterEtag=current.version;entry.status='saved';await this.writeFile(entry);}catch{throw new RecordJournalError('READBACK_UNKNOWN','Write was accepted but readback could not be verified.',{journalId:entry.journalId},{outcome:'unknown',retryable:false});}
   return {collectionName:collection,id,journalId:entry.journalId,saved:true,dryRun:false};
  }
  async rollback(input:Row,signal?:AbortSignal) {

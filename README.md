@@ -6,7 +6,7 @@ Connect AI assistants to Microsoft Dataverse / Dynamics 365 Customer Engagement 
 
 Built with **TypeScript and the Dataverse Web API**, this server provides **116 tools by default**, plus **one opt-in local consultant tool**. It supports records and metadata, Web Resources, plugins, data modeling, diagnostics/audit, solutions, classic Ribbon, SiteMaps/applications, journals/backups, attachments, templates, charts, and user/role administration. It connects over **stdio** and includes a local Web debugger.
 
-**Current source version: 1.1.1.** Web Resource create/update/publish now propagate MCP cancellation through the service and HTTP requests, and check cancellation before writes/publication. An already submitted CRM operation may still take effect; cancellation does not roll it back. The recorded 1.1.0 full local regression passed 1,033 tests (56 files) and compiled 117 registered tool schemas. These historical results are not a new full-regression result for the current HEAD. Live acceptance of newer functionality remains pending; see the [historical live coverage](docs/CRM_TOOL_COVERAGE.md) (65/84 tools called) and [SiteMap publication guide](docs/SITEMAP_PUBLISHING.md).
+**Current source version: 1.1.2.** Web Resource create/update/publish now propagate MCP cancellation through the service and HTTP requests, and check cancellation before writes/publication. An already submitted CRM operation may still take effect; cancellation does not roll it back. The recorded 1.1.0 full local regression passed 1,033 tests (56 files) and compiled 117 registered tool schemas. These historical results are not a new full-regression result for the current HEAD. Live acceptance of newer functionality remains pending; see the [historical live coverage](docs/CRM_TOOL_COVERAGE.md) (65/84 tools called) and [SiteMap publication guide](docs/SITEMAP_PUBLISHING.md).
 
 [Feature checklist](#feature-checklist) · [Architecture and request flow](#architecture-and-request-flow) · [Quick start](#quick-start) · [Authentication](#authentication) · [Examples](#examples) · [Writes and deployment](#writes-publication-and-result-interpretation) · [Extended workflows](#tool-groups-profiles-and-extended-workflows) · [Tool catalog](#tool-catalog) · [Testing and validation](#testing-and-validation)
 
@@ -661,7 +661,7 @@ The debugger checks Host/Origin, limits request bodies, and protects static file
 
 ## Testing and validation
 
-Recorded full local regression for **1.1.0 (2026-11-02)** is shown below. Current source version is **1.1.1**; these figures are historical validation, not a newly executed full suite for this documentation update.
+Recorded full local regression for **1.1.0 (2026-11-02)** is shown below. Current source version is **1.1.2**; these figures are historical validation, not a newly executed full suite for this documentation update.
 
 | Check | Result |
 | --- | --- |
