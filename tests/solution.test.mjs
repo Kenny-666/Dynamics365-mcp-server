@@ -231,3 +231,7 @@ for(const authType of ['online','op_ad','op_ifd'])test(`${authType}: real reques
   const result=await service.add({...addArgs,dry_run:false,expected_hash:preview.planHash,allow_unprotected_write:true});
   assert.equal(result.saved,true);assert.equal(result.readback.membership[0].objectid,ids.object);assert.equal(writes(f).length,1);
 });
+test('system form preview does not request modifiedon absent in CRM 9.1',async()=>{
+ const f=fixture({type:60,request:({path,url})=>{if(path.startsWith('/systemforms(')){assert.equal(url.searchParams.get('$select'),'formid,name,objecttypecode,type,ismanaged');return {status:200,data:{formid:ids.object,name:'Main',objecttypecode:'account',type:2,ismanaged:false},headers:{}};}}});
+ const r=await f.service.add({...addArgs,component_type:60});assert.equal(r.dryRun,true);assert.equal(r.component.objectId,ids.object);assert.equal(writes(f).length,0);
+});

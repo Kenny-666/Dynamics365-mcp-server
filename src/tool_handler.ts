@@ -1,3 +1,11 @@
+import { createSolution } from './services/solutionCreate.js';
+import { prepareCloudFlow } from './services/cloudFlowDefinition.js';
+import { CloudFlowService } from './services/cloudFlow.js';
+import { inspectFormPackage } from './services/formPackageInspect.js';
+import { executeFormPackage } from './services/formPackageExecute.js';
+import { readFormLibrary } from './services/formLibrary.js';
+import { planFormPackage, inspectFormField, inspectFormLibrary } from './services/formPackagePlan.js';
+import { compareFormDefinitions } from './services/formComparison.js';
 import { UserUpdateService } from './services/userUpdate.js';
 import { RolePrivilegeService } from './services/rolePrivilege.js';
 import { RoleDefinitionService } from './services/roleDefinition.js';
@@ -41,12 +49,12 @@ import { pluginAssemblyTools } from './tools/pluginAssemblyTools.js';
 import { RecordMutationService } from './services/recordMutation.js';
 import { RecordBatchService, type MutationContext } from './services/recordBatch.js';
 import { recordMutationTools } from './tools/recordMutationTools.js';
-import { argumentsObject } from './services/recordMutationInput.js';
+import { argumentsObject, guid } from './services/recordMutationInput.js';
 import { DiagnosticService } from './services/diagnostics.js';
 import { SecurityEvidenceService } from './services/securityEvidence.js';
 import { AuditEvidenceService } from './services/auditEvidence.js';
 import { evidenceTools } from './tools/evidenceTools.js';
-import { ModelMetadataService } from './services/modelMetadata.js';
+import { ModelMetadataService, hash } from './services/modelMetadata.js';
 import { modelMetadataTools } from './tools/modelMetadataTools.js';
 import { ModelStructureService } from './services/modelStructure.js';
 import { modelStructureTools } from './tools/modelStructureTools.js';
@@ -100,6 +108,8 @@ function createServices(profile?:string) {
   const webResourceService=new WebResourceService(auth,{orgUrl:config.orgUrl || config.environmentUrl,authType:config.authType || 'online',apiVersion:config.apiVersion || 'v9.2'});
   return {
     auth,
+    createSolution:(args:Record<string,any>,signal?:AbortSignal)=>createSolution(auth,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || "v9.2",authType:config.authType || "online"},args,signal),
+    cloudFlowService:new CloudFlowService(auth,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || "v9.2",authType:config.authType || "online"}),
     userUpdateService:new UserUpdateService(auth,recordMutationService,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
     rolePrivilegeService:new RolePrivilegeService(auth,apiOperationService,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
     roleDefinitionService:new RoleDefinitionService(auth,{orgUrl:config.orgUrl || config.environmentUrl,apiVersion:config.apiVersion || 'v9.2'}),
@@ -184,6 +194,9 @@ function queryInput(args: any): QueryOptions {
 
 // Individual tool modules define their schemas independently; contract tests compile every schema.
 type RegisteredTool = {name:string; description?:string; inputSchema:any; annotations?:{readOnlyHint?:boolean;destructiveHint?:boolean;idempotentHint?:boolean;openWorldHint?:boolean}};
+const cloudListQueryProperties={select:{type:'array',minItems:1,maxItems:50,items:{type:'string'}},order_by:{type:'array',minItems:1,maxItems:5,items:{type:'object',additionalProperties:false,required:['field','direction'],properties:{field:{type:'string'},direction:{enum:['asc','desc']}}}},filter:{type:'object',additionalProperties:false,required:['conditions'],properties:{conditions:{type:'array',minItems:1,maxItems:10,items:{type:'object',additionalProperties:false,required:['field','operator','value'],properties:{field:{type:'string'},operator:{enum:['eq','ne','gt','ge','lt','le']},value:{type:['string','number','boolean']}}}}}}};
+const cloudBranchActionSchema={type:'object',additionalProperties:false,required:['name','kind'],properties:{name:{type:'string'},kind:{enum:['compose','dataverse_list','dataverse_get','dataverse_create','dataverse_update']},entity_set:{type:'string'},record_id:{type:'string'},record_id_from_trigger:{type:'string'},record_id_from_output:{type:'object',additionalProperties:false,required:['action','name'],properties:{action:{type:'string'},name:{type:'string'}}},fields:{type:'object',additionalProperties:{anyOf:[{type:['string','number','boolean']},{type:'object',additionalProperties:false,required:['source','name'],properties:{source:{enum:['trigger','variable','action']},name:{type:'string'},action:{type:'string'}}}]}},top:{type:'integer',minimum:1,maximum:5000},...cloudListQueryProperties,value:{type:['string','number','boolean']}}};
+const cloudLoopActionSchema={...cloudBranchActionSchema,properties:{...cloudBranchActionSchema.properties,record_id_from_item:{type:'string'},fields:{type:'object',additionalProperties:{anyOf:[{type:['string','number','boolean']},{type:'object',additionalProperties:false,required:['source','name'],properties:{source:{enum:['trigger','variable','action','item']},name:{type:'string'},action:{type:'string'}}}]}}}};
 export const tools:RegisteredTool[] = [
   {name:'update_crm_user_profile',description:'Preview then update selected CRM user profile fields or enabled status with metadata-confirmed ETag and readback. Changing isdisabled requires explicit acknowledgement; roles, business unit, domain and passwords are excluded.',inputSchema:{type:'object',additionalProperties:false,required:['user_id','changes'],properties:{user_id:{type:'string'},changes:{type:'object',additionalProperties:false,minProperties:1,properties:{firstname:{type:['string','null']},lastname:{type:'string'},internalemailaddress:{type:['string','null']},title:{type:['string','null']},telephone1:{type:['string','null']},mobilephone:{type:['string','null']},isdisabled:{type:'boolean'}}},dry_run:{type:'boolean'},expected_hash:{type:'string',pattern:'^[a-f0-9]{64}$'},allow_access_change:{type:'boolean'}}},annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},
   {name:'change_role_privilege',description:'Preview then add or remove one native role privilege with an explicitly supported depth. Uses current CSDL, rereads the role privilege, requires both acknowledgements and does not infer effective access. Existing different depths must be removed separately.',inputSchema:{type:'object',additionalProperties:false,required:['role_id','privilege_id','action'],properties:{role_id:{type:'string'},privilege_id:{type:'string'},action:{enum:['add','remove']},depth:{enum:['Basic','Local','Deep','Global']},dry_run:{type:'boolean'},expected_hash:{type:'string',pattern:'^[a-f0-9]{64}$'},allow_unprotected_write:{type:'boolean'},allow_role_privilege_change:{type:'boolean'}}},annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},
@@ -216,6 +229,19 @@ export const tools:RegisteredTool[] = [
   ...pluginAssemblyTools,
   ...pluginImageTools,
   ...modelUiTools,
+  {name:'apply_form_solution_package',description:'Recompute a form package plan, preview a selection, then add selected form and candidate components sequentially with fresh preflights. Requires expected_hash and explicit unprotected-write acceptance. Partial results are reported.',inputSchema:{type:'object',additionalProperties:false,required:['source_profile','target_profile','logical_name','source_form_id','target_form_id','solution_unique_name','components'],properties:{source_profile:{type:'string'},target_profile:{type:'string'},logical_name:{type:'string'},source_form_id:{type:'string'},target_form_id:{type:'string'},solution_unique_name:{type:'string'},components:{type:'array',minItems:1,maxItems:241,items:{type:'object',additionalProperties:false,required:['component_type','component_id'],properties:{component_type:{type:'integer',enum:[2,9,60,61]},component_id:{type:'string'}}}},dry_run:{type:'boolean'},expected_hash:{type:'string'},allow_unprotected_write:{type:'boolean'}}},annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},
+  {name:'create_unmanaged_solution',description:'Preview and create a dedicated unmanaged solution using an existing publisher, then read back its identity. Unknown outcomes are never retried.',inputSchema:{type:'object',additionalProperties:false,required:['unique_name','friendly_name','publisher_id'],properties:{unique_name:{type:'string'},friendly_name:{type:'string'},publisher_id:{type:'string'},version:{type:'string'},dry_run:{type:'boolean'},expected_hash:{type:'string'}}},annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false}},
+  {name:'inspect_form_solution_package',description:'Inspect bounded local ZIP root declarations, selected form XML and Web resource payload hashes. Undeclared items may be nested; dependency completeness is not verified.',inputSchema:{type:'object',additionalProperties:false,required:['components'],properties:{file_path:{type:'string'},content_base64:{type:'string'},components:{type:'array',minItems:1,maxItems:241,items:{type:'object',additionalProperties:false,required:['component_type','component_id'],properties:{component_type:{type:'integer',enum:[2,9,60,61]},component_id:{type:'string'},schema_name:{type:'string'},logical_name:{type:'string'},expected_hash:{type:'string',pattern:'^[a-f0-9]{64}$'}}}}}},annotations:{readOnlyHint:true}},
+  {name:'set_cloud_flow_state',description:'Preview then enable or disable an Online cloud flow using specific native ETag and independent state readback. Does not establish connection, license or runtime readiness.',inputSchema:{type:'object',additionalProperties:false,required:['id','enabled'],properties:{id:{type:'string'},enabled:{type:'boolean'},dry_run:{type:'boolean'},expected_hash:{type:'string'}}},annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false}},
+  {name:'list_cloud_flow_connections',description:'List visible connection reference metadata without exposing connection IDs. Connection validity, permissions and licensing are not established.',inputSchema:{type:'object',additionalProperties:false,properties:{top:{type:'integer',minimum:1,maximum:100}}},annotations:{readOnlyHint:true}},
+  {name:'update_cloud_flow',description:'Preview and replace a stopped Online cloud flow with a supported spec using a specific ETag, then verify its saved definition. Does not enable the flow.',inputSchema:{type:'object',additionalProperties:false,required:['id','spec'],properties:{id:{type:'string'},spec:{type:'object'},dry_run:{type:'boolean'},expected_hash:{type:'string'}}},annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false}},
+  {name:'create_cloud_flow',description:'Preview and create a stopped cloud flow in an existing unmanaged solution using a validated local flow spec. Requires preview hash; readback and solution membership are reported separately.',inputSchema:{type:'object',additionalProperties:false,required:['solution_unique_name','spec'],properties:{solution_unique_name:{type:'string'},spec:{type:'object'},dry_run:{type:'boolean'},expected_hash:{type:'string'}}},annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false}},
+  {name:'prepare_cloud_flow',description:'Construct a local manual, scheduled or Dataverse event cloud-flow draft with bounded literals, variables, condition and foreach. Does not contact Power Platform or validate deployment.',inputSchema:{type:'object',additionalProperties:false,required:['name','trigger','actions'],properties:{name:{type:'string',maxLength:120},dataverse_connection:{type:'string'},trigger:{type:'object',additionalProperties:false,required:['kind'],properties:{kind:{enum:['manual','recurrence','dataverse_event']},entity_name:{type:'string'},message:{type:'integer',enum:[1,2,3,4]},scope:{type:'integer',enum:[1,2,3,4]},filtering_attributes:{type:'array',minItems:1,maxItems:50,items:{type:'string'}},frequency:{enum:['Minute','Hour','Day','Week','Month']},interval:{type:'integer',minimum:1,maximum:500}}},actions:{type:'array',minItems:1,maxItems:20,items:{type:'object',additionalProperties:false,required:['name','kind'],properties:{name:{type:'string'},kind:{enum:['compose','initialize_variable','condition','for_each','dataverse_list','dataverse_get','dataverse_create','dataverse_update']},entity_set:{type:'string'},record_id:{type:'string'},record_id_from_trigger:{type:'string'},record_id_from_output:{type:'object',additionalProperties:false,required:['action','name'],properties:{action:{type:'string'},name:{type:'string'}}},fields:{type:'object',additionalProperties:{anyOf:[{type:['string','number','boolean']},{type:'object',additionalProperties:false,required:['source','name'],properties:{source:{enum:['trigger','variable','action']},name:{type:'string'},action:{type:'string'}}}]}},top:{type:'integer',minimum:1,maximum:5000},...cloudListQueryProperties,value:{anyOf:[{type:['string','number','boolean']},{type:'array',maxItems:100,items:{type:['string','number','boolean']}}]},variable_name:{type:'string'},items_from_action:{type:'string'},loop_actions:{type:'array',minItems:1,maxItems:5,items:cloudLoopActionSchema},condition_source:{type:'object',additionalProperties:false,required:['source','name'],properties:{source:{enum:['trigger','variable','action']},name:{type:'string'},action:{type:'string'}}},then_value:{type:['string','number','boolean']},else_value:{type:['string','number','boolean']},then_actions:{type:'array',minItems:1,maxItems:5,items:cloudBranchActionSchema},else_actions:{type:'array',minItems:1,maxItems:5,items:cloudBranchActionSchema},after:{type:'array',maxItems:10,items:{type:'string'}}}}}}},annotations:{readOnlyHint:true}},
+  {name:'list_cloud_flow_runs',description:'Read bounded Dataverse run metadata for a cloud flow. Results may be delayed, unavailable or incomplete and do not establish full runtime history.',inputSchema:{type:'object',additionalProperties:false,required:['id'],properties:{id:{type:'string'},top:{type:'integer',minimum:1,maximum:100}}},annotations:{readOnlyHint:true}},
+  {name:'list_cloud_flows',description:'Read a bounded list of visible cloud flow records in an Online Dataverse environment; no runtime or connection status asserted.',inputSchema:{type:'object',additionalProperties:false,properties:{top:{type:'integer',minimum:1,maximum:100}}},annotations:{readOnlyHint:true}},
+  {name:'get_cloud_flow',description:'Read a cloud flow summary including trigger, action and connection-reference names and a definition hash; no secrets or full definition returned.',inputSchema:{type:'object',additionalProperties:false,required:['id'],properties:{id:{type:'string'}}},annotations:{readOnlyHint:true}},
+  {name:'plan_form_solution_package',description:'Read source and target main forms and preview adding the entire source form to an existing unmanaged solution. References are not automatically added or fully analyzed.',inputSchema:{type:'object',additionalProperties:false,required:['source_profile','target_profile','logical_name','source_form_id','target_form_id','solution_unique_name'],properties:{source_profile:{type:'string'},target_profile:{type:'string'},logical_name:{type:'string'},source_form_id:{type:'string'},target_form_id:{type:'string'},solution_unique_name:{type:'string'}}},annotations:{readOnlyHint:true}},
+  {name:'compare_environment_forms',description:'Read saved main forms from two explicitly named environment profiles and compare positional XML. No writes or publication verification.',inputSchema:{type:'object',additionalProperties:false,required:['source_profile','target_profile','logical_name','source_form_id','target_form_id'],properties:{source_profile:{type:'string'},target_profile:{type:'string'},logical_name:{type:'string'},source_form_id:{type:'string'},target_form_id:{type:'string'}}},annotations:{readOnlyHint:true}},
   ...modelChoiceTools,
   ...modelStructureTools,
   ...modelMetadataTools,
@@ -380,7 +406,7 @@ export function selectTools(setting = process.env.D365_TOOLSETS ?? 'all') {
       'list_all_entity_definitions','search_records_by_odata','get_record_by_id','get_detailed_field_metadata',
       ...evidenceTools.map(t => t.name)],
     data: ['update_crm_user_profile','change_role_privilege','manage_security_role','create_onprem_domain_user','manage_user_roles',...attachmentTools.map(t => t.name),...recordMutationTools.map(t => t.name),'update_record_with_journal','rollback_record_journal'],
-    config: [...chartTools.map(t => t.name),'backup_customization','restore_customization_backup','check_model_configuration', ...[...modelMaintenanceTools,...modelUiTools,...modelChoiceTools,...modelStructureTools,
+    config: ['list_cloud_flow_runs','create_unmanaged_solution','update_cloud_flow','list_cloud_flow_connections','set_cloud_flow_state','create_cloud_flow','prepare_cloud_flow','list_cloud_flows','get_cloud_flow','inspect_form_solution_package','apply_form_solution_package','plan_form_solution_package','compare_environment_forms',...chartTools.map(t => t.name),'backup_customization','restore_customization_backup','check_model_configuration', ...[...modelMaintenanceTools,...modelUiTools,...modelChoiceTools,...modelStructureTools,
       ...modelMetadataTools,...siteMapTools].map(t => t.name)],
     deploy: [...wordTemplateTools,...solutionTools,...solutionTransferTools,...solutionVerificationTools,...ribbonTools,
       ...ribbonDeploymentTools,...pluginAssemblyTools,...pluginImageTools,...webResourceTools,
@@ -401,6 +427,41 @@ export function selectTools(setting = process.env.D365_TOOLSETS ?? 'all') {
 
 export async function handleToolCall(name: string, args: any = {}, context:MutationContext & {environmentProfile?:string} = {}) {
   if (!tools.some(tool => tool.name === name)) throw new Error(`Unknown tool: ${name}`);
+  if (name === 'compare_environment_forms' || name === 'plan_form_solution_package' || name === 'apply_form_solution_package') {
+    const allowed=['source_profile','target_profile','logical_name','source_form_id','target_form_id',...(name!=='compare_environment_forms'?['solution_unique_name']:[])];
+    if (!args || typeof args!=='object' || Array.isArray(args) || Object.keys(args).some(k=>!allowed.includes(k) && !(name==='apply_form_solution_package' && ['components','dry_run','expected_hash','allow_unprotected_write'].includes(k))) || allowed.some(k=>typeof args[k]!=='string' || !args[k].trim())) throw new Error('Explicit source and target profiles, table and form IDs are required.');
+    if (args.source_profile.toUpperCase()===args.target_profile.toUpperCase()) throw new Error('Source and target profiles must be distinct.');
+    const readForm=async (profile:string,id:string) => {
+      if (!/^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(profile)) throw new Error('Invalid environment profile');
+      const key=profile.toUpperCase();let service=servicePool.get(key);
+      if (!service) {if(servicePool.size>=16) throw new Error('At most 16 environment profiles may be active per process');service=createServices(profile);servicePool.set(key,service);}
+      return service.modelUiService.getComponent({kind:'form',logical_name:args.logical_name,id},context.signal);
+    };
+    const [source,target]=await Promise.all([readForm(args.source_profile,args.source_form_id),readForm(args.target_profile,args.target_form_id)]);
+    const readOrganization=async(profile:string)=>{const service=servicePool.get(profile.toUpperCase());if(!service)throw new Error('Environment was not initialized');try{const r=await service.auth.requestWithResponse<Record<string,any>>('/WhoAmI','GET',undefined,{signal:context.signal});return r.status===200?guid(r.data?.OrganizationId):null;}catch(error){if(context.signal?.aborted)throw error;return null;}};
+    const [sourceOrg,targetOrg]=await Promise.all([readOrganization(args.source_profile),readOrganization(args.target_profile)]);
+    source.environment={...source.environment,organizationId:sourceOrg};target.environment={...target.environment,organizationId:targetOrg};
+    if (name!=='compare_environment_forms') {
+      const service=servicePool.get(args.source_profile.toUpperCase());
+      if (!service) throw new Error('Source environment was not initialized');
+      const destination=servicePool.get(args.target_profile.toUpperCase());
+      if (!destination) throw new Error('Target environment was not initialized');
+      const readField=(side:'source'|'target',logicalName:string,field:string)=>(side==='source'?service:destination).modelMetadataService.get({logical_name:logicalName,attribute_name:field},context.signal);
+      const readLibrary=(side:'source'|'target',libraryName:string)=>readFormLibrary((side==='source'?service:destination).auth,libraryName,context.signal);
+      const plan=await planFormPackage(source,target,args.solution_unique_name,a=>service.solutionService.add(a,context.signal),readField,context.signal,readLibrary);
+      if(name==='plan_form_solution_package') return plan;
+      if(args.dry_run!==undefined&&typeof args.dry_run!=='boolean'||args.allow_unprotected_write!==undefined&&typeof args.allow_unprotected_write!=='boolean')throw new Error('Invalid execution flags');
+      const execute=args.dry_run===false;
+      if(execute&&args.allow_unprotected_write!==true)throw new Error('Explicit unprotected write acceptance is required.');
+      const recheck=async()=>{const [s,t]=await Promise.all([readForm(args.source_profile,args.source_form_id),readForm(args.target_profile,args.target_form_id)]);const result=compareFormDefinitions(s,t);return {sourceXmlHash:result.sourceXmlHash,targetXmlHash:result.targetXmlHash};};
+      const recheckComponent=async(item:Record<string,any>)=>{const names=item.component_type===9?item.related_fields:[item.name];if(!Array.isArray(names)||!names.length)throw new Error('Reviewed component evidence is unavailable.');for(const componentName of names){const field=item.component_type===2||item.component_type===9,checks=field?plan.fieldChecks:plan.libraryChecks,expected=checks.filter(x=>x.name===componentName);if(expected.length!==1)throw new Error('Reviewed component evidence is unavailable.');const current=field?await inspectFormField(componentName,source.logicalName,readField,context.signal):await inspectFormLibrary(componentName,readLibrary,context.signal);if(hash(current)!==hash(expected[0]))throw new Error('Component evidence changed after review.');}};
+      const run=()=>executeFormPackage(plan,args.components,args.expected_hash,execute,a=>service.solutionService.add(a,context.signal),context.signal,recheck,recheckComponent);
+      return execute&&process.env.D365_AUDIT_WRITES==='true'?service.toolAuditService.run(name,run,context.signal):run();
+    }
+    return compareFormDefinitions(source,target);
+  }
+  if (name === 'prepare_cloud_flow') return prepareCloudFlow(args);
+  if (name === 'inspect_form_solution_package') return inspectFormPackage(args,context.signal);
   if (name === 'manage_consultant_project') return consultantProject(args);
   if (name === 'edit_sitemap_xml') return editSiteMap(args);
   if (name === 'd365_plugin_assembly_inspect') return inspectPluginAssembly(args,context.signal);
@@ -431,6 +492,14 @@ export async function handleToolCall(name: string, args: any = {}, context:Mutat
 }
 
 async function dispatchCrmTool(name:string,args:any,context:MutationContext,services:ReturnType<typeof createServices>) {
+  if (name === 'list_cloud_flow_connections') return services.cloudFlowService.listConnections(args,context.signal);
+  if (name === 'set_cloud_flow_state') return services.cloudFlowService.setState(args,context.signal);
+  if (name === 'update_cloud_flow') return services.cloudFlowService.update(args,context.signal);
+  if (name === 'create_cloud_flow') return services.cloudFlowService.create(args,context.signal);
+  if (name === 'list_cloud_flow_runs') return services.cloudFlowService.listRuns(args,context.signal);
+  if (name === 'list_cloud_flows') return services.cloudFlowService.list(args,context.signal);
+  if (name === 'get_cloud_flow') return services.cloudFlowService.get(args,context.signal);
+  if (name === 'create_unmanaged_solution') return services.createSolution(args,context.signal);
   if (name === 'resolve_model_name') return services.configInspectionService.resolve(args,context.signal);
   if (name === 'check_model_configuration') return services.configInspectionService.check(args,context.signal);
   if (name === 'plan_sitemap_publication') return planSiteMapPublication(args,{

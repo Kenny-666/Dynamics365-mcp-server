@@ -4,9 +4,11 @@
 
 Connect AI assistants to Microsoft Dataverse / Dynamics 365 Customer Engagement through the Model Context Protocol (MCP).
 
-Built with **TypeScript and the Dataverse Web API**, this server provides **116 tools by default**, plus **one opt-in local consultant tool**. It supports records and metadata, Web Resources, plugins, data modeling, diagnostics/audit, solutions, classic Ribbon, SiteMaps/applications, journals/backups, attachments, templates, charts, and user/role administration. It connects over **stdio** and includes a local Web debugger.
+Built with **TypeScript and the Dataverse Web API**, this server provides **129 tools by default**, plus **one opt-in local consultant tool**. It supports records and metadata, Web Resources, plugins, data modeling, diagnostics/audit, solutions, classic Ribbon, SiteMaps/applications, journals/backups, attachments, templates, charts, and user/role administration. It connects over **stdio** and includes a local Web debugger.
 
-**Current source version: 1.1.2.** Web Resource create/update/publish now propagate MCP cancellation through the service and HTTP requests, and check cancellation before writes/publication. An already submitted CRM operation may still take effect; cancellation does not roll it back. The recorded 1.1.0 full local regression passed 1,033 tests (56 files) and compiled 117 registered tool schemas. These historical results are not a new full-regression result for the current HEAD. Live acceptance of newer functionality remains pending; see the [historical live coverage](docs/CRM_TOOL_COVERAGE.md) (65/84 tools called) and [SiteMap publication guide](docs/SITEMAP_PUBLISHING.md).
+**Package version: 1.1.2; the working tree also contains unreleased development changes.** Web Resource create/update/publish now propagate MCP cancellation through the service and HTTP requests, and check cancellation before writes/publication. An already submitted CRM operation may still take effect; cancellation does not roll it back. The recorded 1.1.0 full local regression passed 1,033 tests (56 files) and compiled 117 registered tool schemas. These historical results are not a new full-regression result for the current HEAD. Live acceptance of newer functionality remains pending; see the [historical live coverage](docs/CRM_TOOL_COVERAGE.md) (65/84 tools called) and [SiteMap publication guide](docs/SITEMAP_PUBLISHING.md).
+
+**Uncommitted working-tree validation, 2026-11-04:** Build succeeded and the local regression passed 1,109 tests with no failures or skips (71 test files). CRM/Power Platform network scenarios use local fakes and do not constitute live acceptance.
 
 [Feature checklist](#feature-checklist) · [Architecture and request flow](#architecture-and-request-flow) · [Quick start](#quick-start) · [Authentication](#authentication) · [Examples](#examples) · [Writes and deployment](#writes-publication-and-result-interpretation) · [Extended workflows](#tool-groups-profiles-and-extended-workflows) · [Tool catalog](#tool-catalog) · [Testing and validation](#testing-and-validation)
 
@@ -33,10 +35,12 @@ The following capabilities are implemented in code and grouped by usage scenario
 | Word templates | 3 | Organization/personal DOCX list/download/create/update/delete |
 | Charts | 3 | System/personal chart list/read/create/update/delete |
 | Users and roles | 6 | User profile/status, domain users, roles, direct assignments and privileges |
-| **Default total** | **116** | D365_TOOLSETS omitted or set to all |
+| Cross-environment forms and solution creation | 5 | Compare, plan, apply selected components, inspect ZIP, and create an unmanaged solution |
+| Power Automate cloud flows | 8 | Inspect, draft, create, update, enable/disable, inspect connection references and run metadata (Online only) |
+| **Default total** | **129** | D365_TOOLSETS omitted or set to all |
 | Optional consultant | 1 (excluded from default total) | Explicit consultant selection; local DOCX, UAT XLSX and HTML generation/comparison/restore |
 
-Discover tools through MCP `tools/list` and invoke them through `tools/call`. The complete catalog below contains **116 default tools + 1 optional consultant tool**; tool counts and test-case counts are separate measures. Parameters and limits are in the [English tool reference](docs/TOOL_REFERENCE.md) and [Chinese translation](docs/TOOL_REFERENCE.zh-CN.md). The [coverage matrix](docs/CRM_TOOL_COVERAGE.md) preserves the historical 84-tool live baseline and the later 85-tool baseline; it does not certify live acceptance of the current inventory.
+Discover tools through MCP `tools/list` and invoke them through `tools/call`. The catalog below describes the prior 116-tool baseline; the 13 development additions are listed in the [tool reference](docs/TOOL_REFERENCE.md). The current inventory contains **129 default tools + 1 optional consultant tool**; tool counts and test-case counts are separate measures. Parameters and limits are in the [English tool reference](docs/TOOL_REFERENCE.md) and [Chinese translation](docs/TOOL_REFERENCE.zh-CN.md). The [coverage matrix](docs/CRM_TOOL_COVERAGE.md) preserves the historical 84-tool live baseline and the later 85-tool baseline; it does not certify live acceptance of the current inventory.
 
 ### Queries, records, and operational evidence
 
@@ -130,7 +134,7 @@ sequenceDiagram
     participant R as Tool routing and services
     participant A as Configured CRM Web API
     C->>M: tools/list
-    M-->>C: 116 default tools and input Schemas
+    M-->>C: 129 default tools and input Schemas
     C->>M: tools/call(name, arguments)
     M->>R: Dispatch with cancellation/progress context
     alt Offline tool
@@ -196,7 +200,7 @@ Add the server to a client that supports stdio MCP. The following example applie
 
 Set `args` to the **absolute path** of your build and replace the connection settings. Windows JSON paths can use `/`; backslashes must be escaped as `\\`. If the client cannot find node, use the absolute path to the Node executable in `command`.
 
-Save the configuration and restart the MCP service in your client. Confirm that **116 tools** are listed with the default tool groups, then call `get_current_user_context` and `get_environment_capabilities` to inspect the identity and environment. Capability discovery does not establish that permissions or write operations have been validated.
+Save the configuration and restart the MCP service in your client. Confirm that **129 tools** are listed with the default tool groups, then call `get_current_user_context` and `get_environment_capabilities` to inspect the identity and environment. Capability discovery does not establish that permissions or write operations have been validated.
 
 CRM services initialize on demand: the server can start and list tools without connection settings, and validates them on the first CRM call. Restart the service after changing environment variables.
 
@@ -470,7 +474,7 @@ Explicitly select `D365_TOOLSETS=consultant` or combine it with other groups, e.
 ## Tool catalog
 
 <details>
-<summary>Expand all 116 default tools and 1 optional tool</summary>
+<summary>Expand the historical 116-tool catalog and 1 optional tool</summary>
 
 ### Environment and metadata (8)
 
@@ -670,7 +674,7 @@ Recorded full local regression for **1.1.0 (2026-11-02)** is shown below. Curren
 | Tool contracts | All 117 registered input Schemas compiled; tool names are unique and test-file discovery matches the configured suite |
 | ZIP robustness | 256 deterministic truncated/mutated samples rejected as expected |
 | Real localhost HTTP | 10 checks passed, in addition to in-process handler regression tests |
-| Packaged stdio / CLI | 16 startup checks passed; local fake-CRM SiteMap package validation passed with 116 default tools and zero real CRM requests |
+| Historical packaged stdio / CLI | 16 startup checks passed; local fake-CRM SiteMap package validation passed with 116 default tools and zero real CRM requests |
 | Historical source coverage (2026-10-29 baseline) | 98.71% lines, 90.61% branches, 97.21% functions |
 | Historical live CRM integration (1.0.0) | CRM 9.1.7.5 / API v9.1 / AD/NTLM; 65/84 tools called; 20 write/readback paths passed; 2 publication requests accepted; all new objects cleaned |
 

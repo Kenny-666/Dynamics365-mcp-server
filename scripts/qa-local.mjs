@@ -9,7 +9,7 @@ import {archive} from '../tests/solutionTransfer.fixture.mjs';
 const require=createRequire(import.meta.url);
 // The MCP SDK's installed schema validator; this QA command requires development dependencies.
 const Ajv=require('ajv');const ajv=new Ajv({strict:false,validateFormats:false});
-assert.equal(tools.length,117);assert.equal(new Set(tools.map(tool=>tool.name)).size,117);
+assert.equal(tools.length,130);assert.equal(new Set(tools.map(tool=>tool.name)).size,130);
 for(const tool of tools){assert.match(tool.name,/^[a-zA-Z_][a-zA-Z0-9_]*$/);assert.equal(tool.inputSchema.type,'object');ajv.compile(tool.inputSchema);}
 const pkg=JSON.parse(await readFile(new URL('../package.json',import.meta.url),'utf8'));
 const discovered=(await readdir(new URL('../tests/',import.meta.url))).filter(name=>name.endsWith('.test.mjs')).sort();

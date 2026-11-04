@@ -2,7 +2,7 @@
 
 # Development additions: tools, profiles and journals
 
-The development build exposes 116 tools by default. Set `D365_TOOLSETS` to select `query`, `data`, `config`, `deploy`, `diagnostics` or the opt-in `consultant` group; omit it or use `all` for the default CRM inventory (the consultant module remains excluded). MCP tool calls accept `environment_profile` to select an isolated named profile. If omitted, the process default is used. Define profile settings with `D365_PROFILE_<NAME>__<SETTING>`; settings and credentials are never inherited from another profile.
+The development build exposes 129 tools by default (plus one opt-in consultant tool). Set `D365_TOOLSETS` to select `query`, `data`, `config`, `deploy`, `diagnostics` or the opt-in `consultant` group; omit it or use `all` for the default CRM inventory (the consultant module remains excluded). MCP tool calls accept `environment_profile` to select an isolated named profile. If omitted, the process default is used. Define profile settings with `D365_PROFILE_<NAME>__<SETTING>`; settings and credentials are never inherited from another profile.
 
 | Tool | Purpose and safety boundary |
 | --- | --- |
@@ -27,6 +27,27 @@ Set `D365_JOURNAL_DIR` to an absolute directory protected by the operating syste
 The development build passed the 2026-11-02 full local regression (1,033 tests) and local contract checks; real CRM acceptance remains pending. The reference below describes the earlier 1.0.1 baseline.
 
 Version 1.0.1 has 85 tools. The added `publish_sitemap` workflow is documented in [SiteMap publication](SITEMAP_PUBLISHING.md); the existing tool entries below remain applicable.
+
+## Cross-environment forms and cloud flows (development)
+
+The additions below require validation against the final working tree; real cloud acceptance and full cross-environment package acceptance remain outstanding. Use MCP `tools/list` for complete schemas. `dataverse_list` drafts support bounded field selection, ordering, and AND-only structured comparison filters; raw OData or expressions are not accepted.
+
+| Tool | Purpose and boundary |
+| --- | --- |
+| `create_unmanaged_solution` | Preview and create an unmanaged solution with an existing publisher; read back identity. |
+| `compare_environment_forms` | Read saved main forms from two named isolated profiles and report positional XML differences. |
+| `plan_form_solution_package` | Compare selected field properties and script bytes, and preview candidate component membership. Not a dependency closure. |
+| `apply_form_solution_package` | Preview and add selected components sequentially, with explicit concurrency acknowledgment; not atomic and does not export or publish. |
+| `inspect_form_solution_package` | Inspect local ZIP declarations, supported form XML and Web Resource bytes/hashes; no deployment proof. |
+| `list_cloud_flows`, `get_cloud_flow` | Read bounded flow summaries without returning full definitions or connection credentials. |
+| `prepare_cloud_flow`, `create_cloud_flow`, `update_cloud_flow` | Build limited local drafts and preview/create or replace supported stopped flows. |
+| `set_cloud_flow_state` | Preview and enable/disable using an ETag with separate readback. |
+| `list_cloud_flow_connections` | Inspect visible connection reference metadata, without proving authorization or licensing. |
+| `list_cloud_flow_runs` | Read bounded Dataverse run metadata. Records can be delayed, unavailable, filtered or incomplete; an empty result does not prove a flow did not run. |
+
+Form references include hidden-field `datafieldname` and event-handler `libraryName`, in addition to visible control fields and declared libraries. Embedded `WebResourceId` values are inventoried and flagged for independent identity and dependency review; they are not automatically added. Other references may remain undiscovered. `plan_form_solution_package` only previews; use the separate `apply_form_solution_package` to review and add selected candidates.
+
+Cloud operations require an Online Dataverse environment; local CRM is not a Power Platform cloud test. Flow definitions, connector permissions, licensing, DLP and actual execution have not been verified in a live cloud environment. The CRM 9.1 test server returned HTTP 500 for CSDL metadata, blocking component-add preflight. [Chinese reference](TOOL_REFERENCE.zh-CN.md) contains examples.
 
 # Detailed tool reference
 

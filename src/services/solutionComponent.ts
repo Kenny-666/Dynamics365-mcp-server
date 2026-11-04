@@ -3,7 +3,7 @@ export const COMPONENT_TYPES:Record<number,string> = {1:'Entity',2:'Attribute',9
   60:'System Form',61:'Web Resource',90:'Plugin Type',91:'Plugin Assembly',92:'Plugin Step',93:'Plugin Image'};
 const records:Record<number,{set:string;key:string;fields:string}> = {
   26:{set:'savedqueries',key:'savedqueryid',fields:'savedqueryid,name,returnedtypecode,querytype,ismanaged,modifiedon'},
-  60:{set:'systemforms',key:'formid',fields:'formid,name,objecttypecode,type,ismanaged,modifiedon'},
+  60:{set:'systemforms',key:'formid',fields:'formid,name,objecttypecode,type,ismanaged'},
   61:{set:'webresourceset',key:'webresourceid',fields:'webresourceid,name,displayname,webresourcetype,ismanaged,modifiedon'},
   90:{set:'plugintypes',key:'plugintypeid',fields:'plugintypeid,typename,friendlyname,isworkflowactivity,ismanaged,modifiedon'},
   91:{set:'pluginassemblies',key:'pluginassemblyid',fields:'pluginassemblyid,name,version,sourcetype,ismanaged,modifiedon'},

@@ -2,7 +2,7 @@
 
 # 开发版本新增功能：工具、环境配置与变更日志
 
-开发版本默认公开 116 个工具。通过 `D365_TOOLSETS` 选择 `query`、`data`、`config`、`deploy`、`diagnostics` 或需显式启用的 `consultant` 组；不设置或设为 `all` 时使用默认 CRM 工具集（仍不包含顾问模块）。MCP 工具调用可通过 `environment_profile` 选择隔离的命名配置；省略时使用进程默认配置。使用 `D365_PROFILE_<NAME>__<SETTING>` 定义配置项；配置和凭据绝不从其他配置继承。
+开发版本默认公开 129 个工具，另有 1 个需显式启用的顾问工具。通过 `D365_TOOLSETS` 选择 `query`、`data`、`config`、`deploy`、`diagnostics` 或需显式启用的 `consultant` 组；不设置或设为 `all` 时使用默认 CRM 工具集（仍不包含顾问模块）。MCP 工具调用可通过 `environment_profile` 选择隔离的命名配置；省略时使用进程默认配置。使用 `D365_PROFILE_<NAME>__<SETTING>` 定义配置项；配置和凭据绝不从其他配置继承。
 
 | 工具 | 用途与安全边界 |
 | --- | --- |
@@ -1316,3 +1316,115 @@ planHash 绑定包/变更哈希、配置及原生组织/调用者、方案/发�
 离线测试覆盖精确重放、过期导出负载、发布者/版本/表/成员/CSDL 门控、完整范围审阅、无操作、全部原生提交结果、同进程回执绑定/篡改/进程遗失、终态/日志检查、独立发布、部分回读证据、定义不匹配、标签排序、取消、路由及三种模拟真实认证分支。已有传输/编辑器契约保留回归覆盖。未执行真实导入、发布、权限/证书/代理、待发布状态行为、导出规范化、客户端按钮显示或脚本/运行时验证。现代命令和更广泛 Ribbon/自定义流程仍属独立工作。
 
 原生参考：[ImportSolutionAsync](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/reference/importsolutionasync)、[导入响应 ID](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/reference/importsolutionasyncresponse)、[PublishXml](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/reference/publishxml)、[Ribbon 导出/编辑/导入及发布](https://learn.microsoft.com/en-us/power-apps/developer/model-driven-apps/export-prepare-edit-import-ribbon)、[原生导入日志数据](https://learn.microsoft.com/en-us/dynamics365/customerengagement/on-premises/developer/work-solutions?view=op-9-1#tracking-import-success)。
+
+## 跨环境主表单比较（开发中）
+
+真实环境复测前提、测试范围与清理步骤见[跨环境表单与云流程验收记录](FORM_FLOW_LIVE_ACCEPTANCE.zh-CN.md)。
+
+`create_unmanaged_solution` 使用已有发布者创建普通非托管解决方案，参数为 `unique_name`、`friendly_name`、`publisher_id` 和可选的四段 `version`（默认 1.0.0.0）。默认只预览；执行时传入预览的 `planHash` 作为 `expected_hash` 并设置 `dry_run=false`。服务会重新检查身份、发布者与名称并回读创建结果；若提交结果未知，先检查环境，不要盲目重试。已在 CRM 9.1 测试环境创建并清理专用测试方案，其他版本仍须分别验证。
+
+`compare_environment_forms` 接受 `source_profile`、`target_profile`、`logical_name`、`source_form_id`、`target_form_id`，两个配置均须显式命名且不同。工具只读取各环境已保存的主表单定义，按 XML 位置报告属性和内容变化，并汇总字段和脚本库引用的差异。
+
+`endpointRelationship` 报告两侧配置地址是否相同；`organizationRelationship` 根据两侧独立 `WhoAmI` 的组织 ID 报告同一组织、不同组织或未知。地址不同可能是同一组织的别名或代理；组织身份读取失败时报告未知，不推断为不同组织。这些读取不是平台锁。
+
+该比较保留原始 ID 和节点顺序：跨环境生成的 ID 不同或节点移动时可能出现额外差异。字段与脚本引用清单不是组件定义比较或依赖闭包；结果不判断发布状态，不代表解决方案装包完成。请先在目标环境审核全部差异。
+
+`plan_form_solution_package` 在上述参数之外要求 `solution_unique_name`，读取两侧主表单后，调用来源环境现有解决方案组件预览，为整个表单进行成员和直接依赖预检，并列出需要独立检查的字段及脚本引用。此计划工具只预览；审阅候选后可通过独立的 `apply_form_solution_package` 选择并添加组件。两个工具都不会自动导出、发布或导入；字段和脚本内容仅作有限范围比较，完整依赖闭包尚未实现。CRM CSDL 或依赖读取不可用时预检会失败。
+
+引用清单包括普通控件和 `hiddencontrols/data` 中的字段，以及 `Library/name` 和事件 `Handler/libraryName` 中的脚本名称。脚本名称无法唯一解析时列入未解决项目，不推断其不存在。表单中 `WebResourceId` 的原始值以 `references.resourceIds` 列出；来源侧的值同时列入 `unresolvedComponents`，需人工确认其身份、内容和依赖，不能仅凭名称或跨环境 ID 推断一致，也不会自动加入解决方案。自定义控件及其他未识别引用仍需独立审阅。识别范围参考 [CRM 9.1 表单 XML 架构](https://learn.microsoft.com/en-us/dynamics365/customerengagement/on-premises/developer/customize-dev/form-xml-schema?view=op-9-1)。
+
+装包预览现额外读取两侧字段的选定元数据属性及同名脚本资源的保存版本，比较字段属性摘要、脚本字节 SHA-256 和类型；字段差异报告 `differingProperties` 属性名，不返回属性值。显示名称和说明按语言代码及文本比较，忽略标签 ID 和返回顺序；标签集合不完整或语言重复时结果为未知。字段比较仍不是完整定义比较，其他原生元数据中的环境差异可能造成误报。字段最多 100 项、脚本最多 40 项，脚本内容最大 2 MiB。读取失败、结果不唯一、内容格式错误或超过上限均不判作相同。字段完整定义、脚本运行行为、发布状态和传递依赖仍需独立验证。
+
+对来源可读取且两侧选定属性或脚本内容不同的字段、脚本，以及目标读取状态未知的来源组件，预览会按来源环境解析出的组件 ID 分别调用现有组件添加预检。目标未知不被推断为缺失，相关候选标记为需要人工审阅。每个候选的预检相互独立，增加任一组件后成员基线会改变，执行前必须重新预览。候选不代表依赖完整，也不自动提交更改。
+
+对选项集不同或比较未知、且来源能确认全局 Picklist ID 的引用字段，规划还会生成类型 9 全局选项集候选；多个字段引用相同 ID 时合并，并记录关联字段。执行该候选前重新比较关联字段。此能力仅涵盖可解析的全局 Picklist，不代表已发现全部依赖；无可靠 ID 或类型不支持的全局选项集列为未解决项目。
+
+同一来源选项集 ID 在相关字段中若出现不同名称或选定定义，候选标为 `inconsistent_source`，不可执行；独立原生组件预检返回的 ID 或名称与字段引用不一致时也不可执行。需要先查明数据或读取时间差，再重新规划。
+
+字段共同属性缺失，或任一侧未返回另一侧有的属性时，`missingProperties` 列出缺口；缺失不能单独证明属性不同。没有已确认差异但存在缺口时比较结果为 `unknown`，有缺口的候选须人工审阅。来源读取失败或无法确定组件 ID 的项目列在 `unresolvedComponents`，不能作为可执行候选。
+
+受支持的字段选项集比较类型、全局选项集名称、父选项集名称、显示标签、说明、选项顺序、值、标签及选定属性，忽略选项和标签的平台元数据 ID；不完整、重复或不受支持的选项数据标为未知。布尔、选项集和虚拟多选字段如果未返回选项集，即使两边均缺失，也不会判为一致。其他选项集元数据与跨环境全局依赖仍需独立检查，选定属性一致不证明完整定义一致。
+
+`apply_form_solution_package` 对所选表单和候选组件提供独立预览，返回绑定环境、表单定义及选择的 `planHash`。以 `dry_run=false`、`expected_hash` 和 `allow_unprotected_write=true` 执行时逐项重新预检并调用原生添加接口；遇到失败或未知结果立即停止，返回已完成步骤。该过程不具备事务性、不自动重试、不自动导出或验证导出包。未知引用仍需人工审阅，组件添加结果不能证明所有依赖已包含。
+
+执行和导出包检查每次最多选择 241 项（1 个表单、最多 100 个字段、100 个全局选项集和 40 个脚本候选）。每项均要单独预检和回读，大批量可能耗时较长；发生失败或取消时保留已完成步骤，应先检查实际成员再决定如何继续。
+
+为控制批量返回大小，候选组件预览仅附最多 20 条依赖样本、总数和截断标记；需要完整依赖时应单独调用依赖查询工具。执行结果对每项保留添加状态、回读状态、组件成员 ID 和观察到的变更数量，不重复返回完整成员变更列表；数量只表示两次读取之间观察到的变化，不证明全部由本次操作引起。
+
+如果平台已接受添加但成员回读失败，步骤状态为 `accepted_unverified`，流程停止；应先只读检查解决方案成员，不要盲目重复添加。每次添加字段或脚本前重新读取两侧已比较的字段属性或脚本摘要，发生变化时停止；这不是锁，检查之后仍可能发生并发变化，且只涵盖选定属性，需在导出后核对内容。
+
+`inspect_form_solution_package` 可只读检查本地 ZIP 的解决方案清单，核对所选表单、字段、全局选项集和 Web 资源是否以相同 ID 显式声明为根组件。未匹配可能是嵌套在表中或以架构名称表示，不可直接认定缺失；根声明本身不证明组件内容、依赖闭包或部署成功；工具还会单独检查受支持表单 XML 和 Web 资源负载哈希。工具不解压或执行内容。
+
+检查类型 9 全局选项集时，可在组件项传入 `schema_name`。工具按名称查找 `customizations.xml` 的顶层选项集定义，并报告序列化 XML 摘要及按名称匹配的根声明数量。名称由调用者提供，包内按名称找到定义不证明其与传入 GUID 的对应关系、语义一致或依赖完整；重复定义标为歧义。[微软导出文件结构](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/customization-solutions-file-schema)使用名称标识选项集定义。
+
+检查类型 2 字段时，可同时提供表逻辑名 `logical_name` 和字段逻辑名 `schema_name`，工具在标准表定义容器中查找嵌套字段并报告序列化 XML 摘要。这个名称匹配不证明字段与传入 GUID 的对应关系或完整语义一致；缺少名称、重复表或字段，以及包内无可识别逻辑名时分别报告，不能直接推断字段缺失。
+
+## Power Automate 云端流程（开发中）
+
+`list_cloud_flows` 和 `get_cloud_flow` 仅用于 Online Dataverse 配置，分别提供有界流程列表和流程状态、定义哈希、触发器/动作/连接引用名称。详情不返回完整定义或连接凭据，也不证明连接可用、具有许可或流程能运行。本地 CRM 的 AD/IFD 配置会在发送请求前拒绝。流程创建、更新、启停和连接引用检查已实现本地验证，仍待真实云环境验收。
+
+`prepare_cloud_flow` 在本地生成受支持的手动、定时或 Dataverse 事件触发器及有限动作定义；`create_cloud_flow` 对指定 Online 环境和非托管解决方案先预览，再创建并分别报告流程状态与解决方案成员回读；`set_cloud_flow_state` 支持状态预览、特定 ETag 保护的启停及独立回读。三个工具尚未经过真实 Power Platform 验证；流程设计器兼容性、连接许可和运行结果不由创建或状态回读证明。
+
+草稿动作 `dataverse_get` 可按 `entity_set` 和记录 ID 读取一行；ID 可由固定 GUID、Dataverse 事件字段或直接依赖的前置记录动作输出提供。后续动作可引用其字段输出，仍须显式声明直接依赖。连接引用必须已存在；此动作尚未在真实云环境验证。接口依据 [Microsoft Dataverse 连接器的 Get a row by ID](https://learn.microsoft.com/en-us/connectors/commondataserviceforapps/) 定义。
+
+`dataverse_list` 可附带有界的 `select`（1–50 个字段）、`order_by`（1–5 个 `{field,direction}` 项）和 `filter`。筛选固定为最多 10 个条件的 `and` 合取：`{"conditions":[{"field":"statecode","operator":"eq","value":0}]}`；比较运算仅支持 `eq`、`ne`、`gt`、`ge`、`lt`、`le`，值仅支持字符串、有限数值和布尔值。字段名必须是受限标识符（支持 `_ownerid_value`），重复选择或排序字段会被拒绝。实现只生成经过验证的 OData 字面量，并将字符串单引号转义为双单引号；不接受原始 OData、表达式、函数、`or`、日期/GUID 字面量或动态筛选值。该范围不验证字段是否存在、字段类型、连接器解释、分页或真实云端运行结果。
+
+条件动作可使用原有 `variable_name`，或使用 `condition_source` 指定 `trigger`、`variable` 或前置 Dataverse 记录动作的字段，与 `value` 做相等判断；两种来源方式只能选择一种。前置动作或变量初始化必须列在 `after` 中，触发字段仅适用于 Dataverse 事件。两个分支可分别使用固定值 `then_value` / `else_value`，或使用 `then_actions` / `else_actions` 提供 1–5 个 Compose、Dataverse 查询、读取、创建或更新动作；每个分支二选一，分支内动作按顺序执行。分支可引用触发字段、条件 `after` 中的外层动作，以及同一分支内已完成的记录读取或写入动作；不支持跨分支引用、嵌套条件或在分支外引用分支输出。此扩展尚未测试或真实云端验证。
+
+`for_each` 可使用数组变量 `variable_name`，或使用 `items_from_action` 引用 `after` 中的 Dataverse 列表动作。可选 `loop_actions` 允许逐项顺序执行 1–5 个 Compose 或受支持的 Dataverse 动作；写入字段使用 `{"source":"item","name":"字段逻辑名"}` 引用当前记录，读取/更新动作可用 `record_id_from_item` 指定当前记录的 GUID 字段。循环中的后续记录动作也可引用当前循环内前面的记录动作。循环范围取决于列表返回的记录，且执行不是跨记录事务；此扩展尚未测试或真实云端验证。
+
+创建后 `definitionReadback` 将保存的 JSON 结构与提交的草稿分别比较，返回 `matched`、`different` 或 `unknown`；平台对定义的规范化也可能导致差异。它与草稿状态和解决方案成员回读分开，均不能证明流程可运行。
+
+`list_cloud_flow_connections` 只读列出当前 Online 环境中可见的连接引用名称、连接器、状态及是否配置连接，不返回连接 ID 或凭据；该检查不证明连接可用、调用者可使用、许可满足或 DLP 允许。草稿可引用已有 Dataverse 连接引用；创建预览会检查引用，但不能验证连接授权与运行状态。
+
+`update_cloud_flow` 可在 Online 环境预览并替换停用流程的受支持定义，使用特定 ETag 防止覆盖并发更新；保存后独立回读并比较 JSON 结构，分别报告 `matched`、`different` 和 `unknown`。对象键顺序和空白不影响比较；平台规范化也可能导致结构不同。该操作替换整个受支持定义，不能保留草稿规格中未表达的原有动作；平台兼容性、连接可用性和运行效果仍需真实环境验证。
+
+真实 CRM 9.1 只读验证中，系统表单组件的直接读取不支持选择 `modifiedon`。组件预览已移除该字段；复测中解决方案读取及表单组件读取返回 200，后续 `/$metadata` 仍返回 500，因此添加预检尚未完成，未发送写入。
+
+导出包检查还会在 `customizations.xml` 的标准表单容器中按表单 ID 查找实际 `<form>` 并报告其 XML 哈希。重复 ID 标为歧义；未找到不证明表单缺失。导出内容可能含平台附加标记，哈希不同不等于语义不同；此检查仍不证明字段、资源或依赖完整。`customizations.xml` 当前上限 4 MiB。
+
+### 示例：主表单比较与装包
+
+下面的名称和 GUID 仅为占位示例。先配置 `TEST`、`PROD` 两套命名环境，分别指向测试和正式环境。对比与装包计划只读取正式环境；添加操作只作用于 `source_profile`。
+
+```json
+{
+  "source_profile": "TEST",
+  "target_profile": "PROD",
+  "logical_name": "account",
+  "source_form_id": "11111111-1111-1111-1111-111111111111",
+  "target_form_id": "22222222-2222-2222-2222-222222222222"
+}
+```
+
+将上述参数传给 `compare_environment_forms`。添加 `solution_unique_name` 后传给 `plan_form_solution_package`，审阅表单整体变化、候选组件和未知项。调用 `apply_form_solution_package` 时再提供明确的 `components`，例如 `[{"component_type":60,"component_id":"11111111-1111-1111-1111-111111111111"}]`；默认仅预览。执行需在相同选择和环境下提供预览 `planHash` 作为 `expected_hash`，并设置 `dry_run=false`、`allow_unprotected_write=true`。执行按步骤停止并报告结果，不是事务。
+
+### 示例：Dataverse 事件云端流程草稿
+
+以下规格可传给 `prepare_cloud_flow`；输出仅为本地草稿。传给 `create_cloud_flow` 时，作为 `spec` 字段并补充已有云端非托管 `solution_unique_name`，先预览并审阅，再带 `expected_hash` 执行。连接引用须已存在并配置；创建、连接和运行均未经过真实云端环境验收。
+
+```json
+{
+  "name": "Account event example",
+  "dataverse_connection": "example_dataverse_reference",
+  "trigger": {"kind":"dataverse_event","entity_name":"account","message":3,"scope":4,"filtering_attributes":["name"]},
+  "actions": [
+    {"name":"Update","kind":"dataverse_update","entity_set":"accounts","record_id_from_trigger":"accountid","fields":{"description":{"source":"trigger","name":"name"}}}
+  ]
+}
+```
+
+记录更新可能再次触发同一流程；上线前应结合过滤条件、数据变更和业务逻辑检查循环触发风险。草稿生成不验证连接授权、许可、DLP、动作字段元数据或 Power Automate 运行结果。
+
+真实 CRM 9.1 只读抽查：从可见 account 主表单的字段引用中选取 12 个，逐一调用字段定义读取，12 个请求均成功；此抽样不证明所有 59 个引用或两套不同环境可比较。未发送 CRM 写入。
+
+导出包检查对选中的 Web 资源按 `WebResourceId` 查找标准资源清单，并核对 `FileName` 指向的包内条目，返回该条目的字节数和 SHA-256；路径异常、条目缺失或元数据重复会分别报告，不读取执行脚本。哈希可与来源的内容哈希人工比较，仍不代表脚本行为或依赖已验证。
+
+检查导出包时，可为类型 60 表单或类型 61 Web 资源在 `components` 项中提供来源 `expected_hash`，返回 `matched`、`different` 或 `not_requested`。表单 XML 可能包含导出附加标记，哈希差异需要人工解释；字段元数据不支持此哈希比较。
+
+
+### `list_cloud_flow_runs`
+
+在 Online Dataverse 中按云流程 ID 查询有限数量的运行元数据（`id`，可选 `top` 1–100），只返回运行 ID、状态及开始/结束时间，不返回输入、输出或错误正文。Dataverse 运行记录可能延迟、未启用、受权限过滤或不完整；空结果不能证明流程没有运行。此功能尚未在真实云端环境验证。
+
+参考：[Microsoft Flow Run 表](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/reference/flowrun?view=dataverse-latest)、[云流程运行历史](https://learn.microsoft.com/en-us/power-automate/dataverse/cloud-flow-run-metadata)。

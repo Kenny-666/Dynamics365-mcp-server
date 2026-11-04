@@ -12,6 +12,9 @@ const manifest = JSON.parse(await readFile(join(projectRoot, 'package.json'), 'u
 const entry = resolve(process.env.D365_SMOKE_ENTRY || join(projectRoot, manifest.main));
 const guard = join(projectRoot, 'tests/fixtures/deny-network.cjs');
 const expectedTools = [
+  'create_unmanaged_solution',
+  'compare_environment_forms','plan_form_solution_package','apply_form_solution_package','inspect_form_solution_package',
+  'list_cloud_flow_runs','list_cloud_flows','get_cloud_flow','prepare_cloud_flow','create_cloud_flow','set_cloud_flow_state','list_cloud_flow_connections','update_cloud_flow',
   'update_crm_user_profile','change_role_privilege','manage_security_role','list_role_privileges','create_onprem_domain_user','manage_user_roles','list_crm_charts','get_crm_chart','change_crm_chart','list_word_templates','download_word_template','change_word_template','list_note_attachments','download_note_attachment','download_note_attachments','delete_note_attachments','upload_note_attachments','backup_customization','restore_customization_backup','plan_sitemap_publication','publish_sitemap','resolve_model_name','check_model_configuration','edit_sitemap_xml','inspect_sitemap_applications','publish_appmodule',
   'save_sitemap_with_journal','rollback_sitemap_journal','update_record_with_journal','rollback_record_journal','list_change_journal','get_change_journal',
   'import_ribbon_solution','publish_ribbon_solution','verify_ribbon_deployment',
