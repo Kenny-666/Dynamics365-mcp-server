@@ -40,3 +40,7 @@ test('compares expected payload hashes without claiming deployment equivalence',
  const custom=`<ImportExportXml><WebResources><WebResource><WebResourceId>${id}</WebResourceId><Name>new_/demo.js</Name><FileName>/WebResources/demo.js</FileName></WebResource></WebResources></ImportExportXml>`,bytes=archive({entries:[{name:'solution.xml',content:manifest},{name:'customizations.xml',content:custom},{name:'[Content_Types].xml'},{name:'WebResources/demo.js',content:'hello'}]});
  const item={component_type:61,component_id:id},good='2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824';assert.equal(inspectPackageRoots(bytes,[{...item,expected_hash:good}]).webResources[0].hashComparison,'matched');assert.equal(inspectPackageRoots(bytes,[{...item,expected_hash:'a'.repeat(64)}]).webResources[0].hashComparison,'different');assert.throws(()=>inspectPackageRoots(bytes,[{...item,expected_hash:'invalid'}]));
 });
+test('records unrecognized nested global-choice content for review',()=>{
+ const custom='<ImportExportXml><optionsets><optionset Name="new_choice"><options><option><Value>1</Value><Unexpected>unsafe</Unexpected></option></options></optionset></optionsets></ImportExportXml>',bytes=archive({entries:[{name:'solution.xml',content:manifest},{name:'customizations.xml',content:custom},{name:'[Content_Types].xml'}]});
+ const r=inspectPackageRoots(bytes,[{component_type:9,component_id:id,schema_name:'new_choice'}]);assert.ok(r.opaqueSections.some(section=>section.path.includes('/options/option')&&section.element==='Unexpected'));
+});

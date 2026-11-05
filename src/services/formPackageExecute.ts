@@ -18,7 +18,8 @@ export async function executeFormPackage(plan:Row,selected:unknown,expected:unkn
  const keys=selection.map(x=>x.component_type+':'+x.component_id.toLowerCase());if(new Set(keys).size!==keys.length||!selection.some(x=>x.component_type===60))throw new Error('Select the form exactly once; duplicate components are not permitted.');
  const planHash=hash({source:plan.comparison.sourceXmlHash,target:plan.comparison.targetXmlHash,sourceIdentity:plan.comparison.source,targetIdentity:plan.comparison.target,solution:plan.solution,formPreview:plan.formPreview.planHash,fieldChecks:plan.fieldChecks,libraryChecks:plan.libraryChecks,selection});
  if(expected!==undefined&&expected!==planHash)throw new Error('Reviewed form package plan changed; preview again.');
- if(!allow)return {dryRun:true,planHash,selection,atomic:false,steps:[],scope:'entire_source_form'};
+ if(!allow)return {dryRun:true,planHash,selection,atomic:false,steps:[],scope:'entire_source_form',executionBlocked:true,blockedBy:'RELEASE_SCOPE_NOT_VERIFIED',guidance:'The complete source form and selected components may contain unrelated changes. Baseline-based change isolation and exported package verification are not implemented; do not use this plan for release.'};
+ if(allow)throw new CrmRequestError('D365_FORM_RELEASE_SCOPE_UNVERIFIED','Form package execution is disabled because approved changes cannot yet be isolated from unrelated changes. Preview and inspect the complete source form and dependencies; use an independently controlled release process.',{outcome:'not_sent'});
  if(typeof expected!=='string'||expected!==planHash)throw new Error('Execution requires expected_hash from the current preview.');
  const steps:Row[]=[];
  for(const item of selection){

@@ -57,7 +57,7 @@ for(const [relative,entry] of Object.entries(lock.packages).filter(([key,value])
   notices.push({name:module.name,version:module.version,license:module.license??entry.license??'See upstream declaration',author:module.author??null,repository:module.repository??null,licenseFiles});
 }
 fs.writeFileSync(path.join(folder,'licenses','npm-notices.json'),JSON.stringify({scope:'Installed production dependency tree; some entries may not contribute code to the bundled server.',packages:notices},null,2)+'\n');
-const info={name:pkg.name,version:pkg.version,target:'windows-x64',transport:'stdio',toolCount:129,
+const info={name:pkg.name,version:pkg.version,target:'windows-x64',transport:'stdio',toolCount:167,
   bundledNode:node.version,bundledDotnet:netVersion,bundleSHA256:digest(path.join(folder,'app','dist','index.cjs')),
   nodeExeSHA256:digest(nodeExe),nodeLicenseSource:'https://raw.githubusercontent.com/nodejs/node/'+node.version+'/LICENSE',
   localRegression:{status:'not_recorded_for_this_build',historicalBaseline:{version:'1.0.1',passed:943,failed:0,skipped:0}},liveCoverage:{baselineToolsCalled:65,baselineToolCount:84,siteMapPublicationLiveVerified:false,fullAcceptanceComplete:false},
@@ -68,7 +68,7 @@ const files=[];function walk(directory){for(const entry of fs.readdirSync(direct
   if(/\.(?:cjs|js|md|json|txt|example|cmd)$/i.test(relative))assert.ok(!/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(fs.readFileSync(full,'utf8')),'Private key material found in release.');
   files.push({path:relative,size:fs.statSync(full).size,sha256:digest(full)});
 }}}walk(folder);files.sort((a,b)=>a.path.localeCompare(b.path));
-fs.writeFileSync(path.join(folder,'manifest.json'),JSON.stringify({version:pkg.version,toolCount:129,hashAlgorithm:'SHA-256',files},null,2)+'\n');
+fs.writeFileSync(path.join(folder,'manifest.json'),JSON.stringify({version:pkg.version,toolCount:167,hashAlgorithm:'SHA-256',files},null,2)+'\n');
 execFileSync('tar.exe',['-a','-c','-f',zip,'-C',stage,name],{stdio:'inherit'});
 fs.writeFileSync(path.join(out,'使用说明.md'),[
   '# Dynamics 365 MCP 分发包',

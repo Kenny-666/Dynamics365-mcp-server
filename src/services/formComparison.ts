@@ -17,8 +17,13 @@ export function compareFormDefinitions(source:Row,target:Row) {
    if(nativeId && ['tab','section','control'].includes(node.tagName)){const key=node.tagName+':'+nativeId.toLowerCase(),existing=identities.get(key)||[];existing.push(path);identities.set(key,existing);}
    const attrs:Array<[string,string]>=[];for(let i=0;i<node.attributes.length;i++){const a=node.attributes.item(i)!;attrs.push([a.name,a.value]);}attrs.sort((a,b)=>a[0].localeCompare(b[0]));
    const children=Array.from(node.childNodes).filter(n=>n.nodeType===1) as Element[];
-   const text=Array.from(node.childNodes).filter(n=>n.nodeType===3||n.nodeType===4).map(n=>n.nodeValue||'').filter(v=>v.trim()).join('');
-   out.set(path,JSON.stringify({attributes:attrs,text,childOrder:children.map(child=>child.tagName)}));
+   const childNodes=Array.from(node.childNodes);
+   const text=childNodes.filter(n=>n.nodeType===3||n.nodeType===4).map(n=>n.nodeValue||'').filter(v=>v.trim()).join('');
+   // Preserve mixed-content ordering and leaf whitespace, as the form hash does.
+   // Concatenating text alone can hide a change when text moves across an element.
+   const childContent:Array<{element?:string;text?:string|null}>=[];
+   for(const child of childNodes){if(child.nodeType===1)childContent.push({element:(child as Element).tagName});else if((child.nodeType===3||child.nodeType===4)&&(!children.length||child.nodeValue?.trim()))childContent.push({text:child.nodeValue});}
+   out.set(path,JSON.stringify({attributes:attrs,text,childOrder:children.map(child=>child.tagName),childContent}));
    const seen=new Map<string,number>();for(const child of children){const n=(seen.get(child.tagName)||0)+1;seen.set(child.tagName,n);visit(child,`${path}/${child.tagName}[${n}]`);}
   };visit(doc.documentElement!,'/form[1]');return {out,identities};
  };
@@ -37,7 +42,7 @@ export function compareFormDefinitions(source:Row,target:Row) {
   const left=JSON.parse(a.get(sourcePath)!),right=JSON.parse(b.get(targetPath)!);
   const leftAttrs=Object.fromEntries(left.attributes),rightAttrs=Object.fromEntries(right.attributes),keys=[...new Set([...Object.keys(leftAttrs),...Object.keys(rightAttrs)])].sort();
   const attributes=keys.filter(k=>leftAttrs[k]!==rightAttrs[k]).map(name=>({name,source:leftAttrs[name]??null,target:rightAttrs[name]??null}));
-  if(attributes.length||left.text!==right.text||JSON.stringify(left.childOrder)!==JSON.stringify(right.childOrder))identityChanges.push({id,sourcePath,targetPath,attributes,textChanged:left.text!==right.text,childOrderChanged:JSON.stringify(left.childOrder)!==JSON.stringify(right.childOrder),scope:'node_only'});
+  if(attributes.length||left.text!==right.text||JSON.stringify(left.childContent)!==JSON.stringify(right.childContent))identityChanges.push({id,sourcePath,targetPath,attributes,textChanged:left.text!==right.text,childOrderChanged:JSON.stringify(left.childOrder)!==JSON.stringify(right.childOrder),mixedContentChanged:JSON.stringify(left.childContent)!==JSON.stringify(right.childContent),scope:'node_only'});
  }
  moves.sort((x,y)=>x.id.localeCompare(y.id));identityChanges.sort((x,y)=>x.id.localeCompare(y.id));ambiguousIds.sort();
  const changes=paths.filter(k=>a.get(k)!==b.get(k)).map(path=>({path,category:/\/Handler\[|\/event\[/.test(path)?'event':/\/Library\[/.test(path)?'library':/\/control\[/.test(path)?'control':/\/section\[/.test(path)?'section':/\/tab\[/.test(path)?'tab':'other',kind:!b.has(path)?'source_only':!a.has(path)?'target_only':'changed',source:a.has(path)?JSON.parse(a.get(path)!):null,target:b.has(path)?JSON.parse(b.get(path)!):null}));

@@ -1,0 +1,37 @@
+import {XMLSerializer,type Element,type Node} from '@xmldom/xmldom';
+import {uiXml,xmlHash} from './modelUiXml.js';
+import {hash} from './modelMetadata.js';
+type Row=Record<string,any>;
+const serializer=new XMLSerializer();
+const children=(node:Node,tag:string)=>Array.from(node.childNodes).filter(x=>x.nodeType===1&&(x as Element).tagName===tag) as Element[];
+const nodeHash=(node:Node)=>hash(serializer.serializeToString(node));
+function selector(raw:Row){
+ if(!['library','handler'].includes(raw.kind)||typeof raw.entry_id!=='string'||!raw.entry_id.trim()||raw.entry_id.length>250)throw new Error('A library name or handler ID is required.');
+ if(raw.kind==='library'&&(raw.event_name!==undefined||raw.attribute_name!==undefined))throw new Error('Event selectors are not used for libraries.');
+ if(raw.kind==='handler'&&(typeof raw.event_name!=='string'||!['onload','onsave','onchange'].includes(raw.event_name)||raw.event_name==='onchange'&&(typeof raw.attribute_name!=='string'||!/^[A-Za-z][A-Za-z0-9_]{0,99}$/.test(raw.attribute_name))||raw.event_name!=='onchange'&&raw.attribute_name!==undefined))throw new Error('A supported event identity is required.');
+ return {kind:raw.kind,entry_id:raw.entry_id,event_name:raw.event_name,attribute_name:raw.attribute_name};
+}
+function optionalContainer(doc:any,s:Row):Element|null{
+ const root=doc.documentElement;if(s.kind==='library'){const nodes=children(root,'formLibraries');if(nodes.length>1)throw new Error('The library container is ambiguous.');return nodes[0]??null;}
+ const groups=children(root,'events');if(groups.length>1)throw new Error('The events container is ambiguous.');if(!groups.length)return null;const events=children(groups[0],'event').filter(e=>e.getAttribute('name')===s.event_name&&(e.getAttribute('attribute')||undefined)===s.attribute_name);if(events.length>1)throw new Error('The event is ambiguous.');if(!events.length)return null;if(['true','1'].includes(events[0].getAttribute('application')||''))throw new Error('Application events are not supported.');const handlers=children(events[0],'Handlers');if(handlers.length>1)throw new Error('The handler container is ambiguous.');return handlers[0]??null;
+}
+function container(doc:any,s:Row):Element{const found=optionalContainer(doc,s);if(!found)throw new Error('The entry container is missing.');return found;}
+function entries(parent:Element|null,s:Row){const tag=s.kind==='library'?'Library':'Handler',attribute=s.kind==='library'?'name':'handlerUniqueId';return parent?children(parent,tag).filter(e=>(e.getAttribute(attribute)||'').toLowerCase()===s.entry_id.toLowerCase()):[];}
+export function inspectFormScriptEntry(raw:unknown){
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('A script entry inspection request is required.');const a=raw as Row;if(Object.keys(a).some(k=>!['formxml','kind','entry_id','event_name','attribute_name'].includes(k))||typeof a.formxml!=='string')throw new Error('Invalid inspection arguments.');const s=selector(a),doc=uiXml(a.formxml,'form'),found=entries(container(doc,s),s);if(found.length!==1)throw new Error('The selected entry must be unique.');return {...s,entryXml:serializer.serializeToString(found[0]),entryHash:nodeHash(found[0]),formHash:xmlHash(a.formxml,'form'),note:'Review the entire entry and referenced web resource before selection.'};
+}
+export function prepareFormScriptEntryCandidate(raw:unknown,workingTarget?:string){
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('A script entry candidate request is required.');const a=raw as Row;if(Object.keys(a).some(k=>!['baseline','source','target','baseline_hash','source_hash','target_hash','kind','entry_id','event_name','attribute_name','action','entry_hash'].includes(k)))throw new Error('Unexpected candidate argument.');
+ const s=selector(a);for(const side of ['baseline','source','target'])if(typeof a[side]!=='string'||typeof a[side+'_hash']!=='string'||!/^[a-f0-9]{64}$/.test(a[side+'_hash'])||xmlHash(a[side],'form')!==a[side+'_hash'])throw new Error('A matching reviewed XML hash is required for '+side+'.');
+ if(a.baseline_hash!==a.target_hash)throw new Error('Target differs from baseline; resolve target changes first.');if(!['add','remove'].includes(a.action)||typeof a.entry_hash!=='string'||!/^[a-f0-9]{64}$/.test(a.entry_hash))throw new Error('A valid action and reviewed entry hash are required.');
+ const baseline=uiXml(a.baseline,'form'),source=uiXml(a.source,'form'),target=uiXml(workingTarget??a.target,'form'),b=optionalContainer(baseline,s),src=optionalContainer(source,s);let dest=optionalContainer(target,s);const before=entries(b,s),after=entries(src,s),current=entries(dest,s);
+ if(a.action==='add'){
+  if(before.length||current.length||after.length!==1||nodeHash(after[0])!==a.entry_hash)throw new Error('Added entry is ambiguous or differs from the reviewed source.');
+  if(!src)throw new Error('Source container is missing.');
+  if(!dest){if(s.kind==='library'){dest=target.createElement('formLibraries');target.documentElement!.appendChild(dest);}else{let groups=children(target.documentElement!,'events');if(groups.length>1)throw new Error('The target events container is ambiguous.');if(!groups.length){const group=target.createElement('events');target.documentElement!.appendChild(group);groups=[group];}let events=children(groups[0],'event').filter(e=>e.getAttribute('name')===s.event_name&&(e.getAttribute('attribute')||undefined)===s.attribute_name);if(events.length>1)throw new Error('The target event is ambiguous.');if(!events.length){const sourceEvent=src.parentNode as Element;if(!sourceEvent||sourceEvent.tagName!=='event')throw new Error('Source event is unavailable.');const event=target.importNode(sourceEvent,false) as Element;groups[0].appendChild(event);events=[event];}dest=target.createElement('Handlers');events[0].appendChild(dest);}}
+  const tag=s.kind==='library'?'Library':'Handler',siblings=children(src,tag),index=siblings.indexOf(after[0]);let anchor:Node|null=null;
+  for(let i=index+1;i<siblings.length;i++){const h=nodeHash(siblings[i]),left=b?children(b,tag).filter(x=>nodeHash(x)===h):[];if(left.length>1)throw new Error('Entry insertion anchor is ambiguous.');if(left.length===1){const right=children(dest,tag).filter(x=>nodeHash(x)===h);if(right.length!==1)throw new Error('Target insertion anchor is unavailable.');anchor=right[0];break;}}
+  dest.insertBefore(target.importNode(after[0],true),anchor);
+ }else{if(!dest||before.length!==1||current.length!==1||after.length||nodeHash(before[0])!==a.entry_hash||nodeHash(current[0])!==a.entry_hash)throw new Error('Removed entry is ambiguous or differs from the reviewed baseline.');dest.removeChild(current[0]);}
+ const root=target.documentElement;if(!root)throw new Error('Target form has no document element.');const formxml=serializer.serializeToString(root);uiXml(formxml,'form');const candidateHash=xmlHash(formxml,'form');return {candidate:{formxml},candidateHash,reviewHash:hash({baseline:a.baseline_hash,source:a.source_hash,target:a.target_hash,selector:s,action:a.action,entryHash:a.entry_hash,candidateHash}),executionAllowed:false,limitations:['Only one selected entry is changed; missing target containers may be created without copying unrelated entries.','New event attributes are copied from the source and require review.','Referenced web resources, function names, script contents and dependencies require separate review.','No CRM write, publication or packaging is performed.']};
+}

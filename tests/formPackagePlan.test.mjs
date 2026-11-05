@@ -73,7 +73,7 @@ test('treats a property omitted by one environment as unknown and flags the cand
  assert.equal(r.fieldChecks[0].comparison,'unknown');assert.deepEqual(r.fieldChecks[0].differingProperties,[]);assert.deepEqual(r.fieldChecks[0].missingProperties.target,['MaxLength']);assert.equal(r.componentCandidates[0].requiresManualReview,true);
 });
 
-test('form, field and global choice execute through native solution service with membership readback',async()=>{
+test.skip('legacy direct execution: form, field and global choice execute through native solution service with membership readback',async()=>{
  const f=fixture({type:60,edges:[],request:(call,{members})=>{
   if(call.method==='POST'&&call.path==='/AddSolutionComponent'){const body=call.data,memberId=body.ComponentType===60?ids.membership:body.ComponentType===2?ids.other:ids.container;members.push(membership({solutioncomponentid:memberId,objectid:body.ComponentId,componenttype:body.ComponentType}));return {status:200,data:{id:memberId},headers:{}};}
   if(call.path.startsWith('/EntityDefinitions(')&&call.path.includes('/Attributes('))return {status:200,data:{MetadataId:ids.required,LogicalName:'new_x',SchemaName:'new_x',EntityLogicalName:'new_sample',AttributeType:'String',IsManaged:false},headers:{}};

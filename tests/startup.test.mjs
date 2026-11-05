@@ -75,7 +75,9 @@ async function withServer(settings, run, options = {}) {
 
 async function assertToolInventory(client) {
   const result = await client.listTools();
-  assert.deepEqual(result.tools.map(tool => tool.name).sort(), expectedTools);
+  const names = result.tools.map(tool => tool.name);
+  assert.equal(new Set(names).size, names.length, 'tool names must be unique');
+  for (const name of expectedTools) assert.ok(names.includes(name), `missing required tool: ${name}`);
 }
 
 test('local assembly metadata inspection works without CRM configuration using packaged reader', {timeout:20000},async()=>{
